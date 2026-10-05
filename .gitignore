@@ -1,0 +1,14 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+TestResults/
+
+## Sistema operativo
+.DS_Store
+Thumbs.db
