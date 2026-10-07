@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- 12.5.0 es la última versión con licencia Apache 2.0 (la v13+ es comercial) -->
+    <PackageReference Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Catalogo.Domain\Catalogo.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
