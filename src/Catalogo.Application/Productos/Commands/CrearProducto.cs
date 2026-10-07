@@ -23,17 +23,22 @@ public sealed class CrearProductoHandler(
     public async Task<Guid> Handle(CrearProductoCommand request, CancellationToken ct)
     {
         // 1. Reglas del dominio (no requieren base de datos)
-        var precio = Precio.Crear(request.Precio, request.Moneda);
-        var producto = Producto.Crear(request.Nombre, request.Descripcion, precio, request.Stock, request.CategoriaId);
+        var producto = Producto.Crear(
+            request.Nombre,
+            request.Descripcion,
+            request.Precio,
+            request.Moneda,
+            request.Stock,
+            request.CategoriaId);
 
         // 2. Reglas que requieren consultar datos existentes
         if (!await categorias.ExisteAsync(request.CategoriaId, ct))
             throw new DomainException($"La categoría con id '{request.CategoriaId}' no existe.");
 
-        if (await productos.ExisteConNombreAsync(producto.Nombre, ct))
+        if (await productos.ExisteNombreAsync(producto.Nombre, ct))
             throw new DomainException($"Ya existe un producto con el nombre '{producto.Nombre}'.");
 
-        productos.Agregar(producto);
+        await productos.AgregarAsync(producto, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
         return producto.Id;

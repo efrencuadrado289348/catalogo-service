@@ -17,7 +17,7 @@ public sealed class AjustarStockHandler(IProductoRepository productos, IUnitOfWo
             ?? throw new NotFoundException($"No existe el producto con id '{request.ProductoId}'.");
 
         if (request.Cantidad >= 0)
-            producto.AumentarStock(request.Cantidad);
+            producto.AgregarStock(request.Cantidad);
         else
             producto.DescontarStock(-request.Cantidad);
 

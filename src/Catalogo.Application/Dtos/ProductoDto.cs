@@ -5,7 +5,7 @@ namespace Catalogo.Application.Dtos;
 public sealed record ProductoDto(
     Guid Id,
     string Nombre,
-    string Descripcion,
+    string? Descripcion,
     decimal Precio,
     string Moneda,
     int Stock,
