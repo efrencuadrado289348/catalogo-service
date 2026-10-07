@@ -10,6 +10,25 @@ services:
       - "5433:5432"
     volumes:
       - catalogo-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalogo -d catalogo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  catalogo-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: catalogo-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__CatalogoDb: Host=catalogo-db;Port=5432;Database=catalogo;Username=catalogo;Password=catalogo123
+    ports:
+      - "5080:8080"
+    depends_on:
+      catalogo-db:
+        condition: service_healthy
 
 volumes:
   catalogo-data:
