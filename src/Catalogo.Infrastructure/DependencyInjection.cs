@@ -22,6 +22,13 @@ public static class DependencyInjection
                 "No se encontró la cadena de conexión 'CatalogoDb'.");
         }
 
+        return services.AddInfrastructure(connectionString);
+    }
+
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        string connectionString)
+    {
         services.AddDbContext<CatalogoDbContext>(options =>
             options.UseNpgsql(connectionString));
 
@@ -30,5 +37,12 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
+    }
+
+    public static async Task AplicarMigracionesAsync(this IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CatalogoDbContext>();
+        await context.Database.MigrateAsync();
     }
 }

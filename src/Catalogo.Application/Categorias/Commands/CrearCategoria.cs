@@ -15,10 +15,10 @@ public sealed class CrearCategoriaHandler(ICategoriaRepository categorias, IUnit
     {
         var categoria = Categoria.Crear(request.Nombre);
 
-        if (await categorias.ExisteConNombreAsync(categoria.Nombre, ct))
+        if (await categorias.ExisteNombreAsync(categoria.Nombre, ct))
             throw new DomainException($"Ya existe una categoría con el nombre '{categoria.Nombre}'.");
 
-        categorias.Agregar(categoria);
+        await categorias.AgregarAsync(categoria, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
         return categoria.Id;

@@ -16,7 +16,7 @@ public sealed class ActualizarPrecioHandler(IProductoRepository productos, IUnit
         var producto = await productos.ObtenerPorIdAsync(request.ProductoId, ct)
             ?? throw new NotFoundException($"No existe el producto con id '{request.ProductoId}'.");
 
-        producto.CambiarPrecio(Precio.Crear(request.Valor, request.Moneda));
+        producto.CambiarPrecio(request.Valor, request.Moneda);
         await unitOfWork.SaveChangesAsync(ct);
     }
 }
