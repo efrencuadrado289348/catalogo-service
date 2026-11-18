@@ -23,8 +23,8 @@ Microservicio para la gestión de productos y categorías del e-commerce de elec
 
 El entorno incluye dos servicios definidos en [`docker-compose.yml`](docker-compose.yml):
 
-- **`catalogo-api`**: API REST en .NET expuesta en el puerto `5080`.
-- **`catalogo-db`**: Base de datos PostgreSQL 17 expuesta en el puerto `5433`.
+- **`catalog-api`**: API REST en .NET expuesta en el puerto `5080`.
+- **`catalog-db`**: Base de datos PostgreSQL 17 expuesta en el puerto `5433`.
 
 La API espera a que la base de datos esté lista (`healthcheck`) y aplica las migraciones automáticamente al iniciar.
 
@@ -52,7 +52,7 @@ docker compose stop
 # Reanudar contenedores detenidos
 docker compose start
 
-# Reiniciar servicios (o uno en específico: docker compose restart catalogo-api)
+# Reiniciar servicios (o uno en específico: docker compose restart catalog-api)
 docker compose restart
 
 # Detener y remover contenedores y red
@@ -71,24 +71,24 @@ docker compose ps
 docker compose logs -f
 
 # Ver logs de un servicio específico
-docker compose logs -f catalogo-api
-docker compose logs -f catalogo-db
+docker compose logs -f catalog-api
+docker compose logs -f catalog-db
 ```
 
 #### Acceso directo a contenedores
 ```bash
 # Acceder a la consola interactiva psql de PostgreSQL
-docker compose exec catalogo-db psql -U catalogo -d catalogo
+docker compose exec catalog-db psql -U catalog -d catalog
 
 # Abrir una terminal interactiva dentro del contenedor de la API
-docker compose exec catalogo-api sh
+docker compose exec catalog-api sh
 ```
 
 ### Ejecución local sin Docker para la API
 
 ```bash
-docker compose up -d catalogo-db
-dotnet run --project src/Catalogo.API
+docker compose up -d catalog-db
+dotnet run --project src/Catalog.API
 ```
 
 La API usa la cadena de conexión de `appsettings.json` (`localhost:5433`).
@@ -97,8 +97,8 @@ Para crear una nueva migración después de cambiar el modelo:
 
 ```bash
 dotnet ef migrations add NombreMigracion \
-  --project src/Catalogo.Infrastructure \
-  --startup-project src/Catalogo.API \
+  --project src/Catalog.Infrastructure \
+  --startup-project src/Catalog.API \
   --output-dir Persistence/Migrations
 ```
 
@@ -111,61 +111,61 @@ dotnet ef migrations add NombreMigracion \
 
 ---
 
-### Categorías (`/api/categorias`)
+### Categorías (`/api/categories`)
 
 | Método | Ruta | Descripción | Respuestas |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/categorias` | Crea una nueva categoría | `201 Created`, `400 Bad Request` |
-| `GET` | `/api/categorias` | Lista todas las categorías | `200 OK` |
-| `GET` | `/api/categorias/{id}` | Obtiene una categoría por su ID (`Guid`) | `200 OK`, `404 Not Found` |
+| `POST` | `/api/categories` | Crea una nueva categoría | `201 Created`, `400 Bad Request` |
+| `GET` | `/api/categories` | Lista todas las categorías | `200 OK` |
+| `GET` | `/api/categories/{id}` | Obtiene una categoría por su ID (`Guid`) | `200 OK`, `404 Not Found` |
 
-#### Payload: Crear categoría (`POST /api/categorias`)
+#### Payload: Crear categoría (`POST /api/categories`)
 ```json
 {
-  "nombre": "Electrónica"
+  "name": "Electrónica"
 }
 ```
 
 ---
 
-### Productos (`/api/productos`)
+### Productos (`/api/products`)
 
 | Método | Ruta | Descripción | Respuestas |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/productos` | Crea un nuevo producto | `201 Created`, `400 Bad Request` |
-| `GET` | `/api/productos` | Lista productos (filtro opcional: `?categoriaId={guid}`) | `200 OK` |
-| `GET` | `/api/productos/{id}` | Obtiene un producto por su ID (`Guid`) | `200 OK`, `404 Not Found` |
-| `PATCH` | `/api/productos/{id}/precio` | Actualiza el precio y moneda | `204 No Content`, `400`, `404` |
-| `PATCH` | `/api/productos/{id}/stock` | Ajusta el inventario (suma o resta) | `204 No Content`, `400`, `404` |
-| `PATCH` | `/api/productos/{id}/desactivar` | Marca el producto como inactivo | `204 No Content`, `400`, `404` |
+| `POST` | `/api/products` | Crea un nuevo producto | `201 Created`, `400 Bad Request` |
+| `GET` | `/api/products` | Lista productos (filtro opcional: `?categoriaId={guid}`) | `200 OK` |
+| `GET` | `/api/products/{id}` | Obtiene un producto por su ID (`Guid`) | `200 OK`, `404 Not Found` |
+| `PATCH` | `/api/products/{id}/price` | Actualiza el precio y moneda | `204 No Content`, `400`, `404` |
+| `PATCH` | `/api/products/{id}/stock` | Ajusta el inventario (suma o resta) | `204 No Content`, `400`, `404` |
+| `PATCH` | `/api/products/{id}/deactivate` | Marca el producto como inactivo | `204 No Content`, `400`, `404` |
 
-#### Payload: Crear producto (`POST /api/productos`)
+#### Payload: Crear producto (`POST /api/products`)
 ```json
 {
-  "nombre": "Teclado Mecánico",
-  "descripcion": "Teclado inalámbrico RGB",
-  "precio": 89.99,
-  "moneda": "USD",
+  "name": "Teclado Mecánico",
+  "description": "Teclado inalámbrico RGB",
+  "price": 89.99,
+  "currency": "USD",
   "stock": 25,
-  "categoriaId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+  "categoryId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 }
 ```
 
-#### Payload: Actualizar precio (`PATCH /api/productos/{id}/precio`)
+#### Payload: Actualizar precio (`PATCH /api/products/{id}/price`)
 ```json
 {
-  "valor": 79.99,
-  "moneda": "USD"
+  "amount": 79.99,
+  "currency": "USD"
 }
 ```
 
-#### Payload: Ajustar stock (`PATCH /api/productos/{id}/stock`)
+#### Payload: Ajustar stock (`PATCH /api/products/{id}/stock`)
 ```json
 {
-  "cantidad": 10
+  "quantity": 10
 }
 ```
-> **Nota:** Para restar inventario se envían valores negativos (ej. `"cantidad": -5`).
+> **Nota:** Para restar inventario se envían valores negativos (ej. `"quantity": -5`).
 
 ---
 
@@ -207,35 +207,35 @@ flowchart TD
         Client["Cliente HTTP / Postman / Swagger UI"]
     end
 
-    subgraph API["Catalogo.API (Presentación)"]
-        Controllers["Controllers (CategoriasController, ProductosController)"]
+    subgraph API["Catalog.API (Presentación)"]
+        Controllers["Controllers (CategoriesController, ProductsController)"]
         ExceptionHandling["GlobalExceptionHandler & ProblemDetails"]
     end
 
-    subgraph Application["Catalogo.Application (Casos de Uso - CQRS)"]
+    subgraph Application["Catalog.Application (Casos de Uso - CQRS)"]
         MediatR["MediatR (ISender)"]
-        Commands["Commands & Handlers (Crear, ActualizarPrecio, AjustarStock, Desactivar)"]
+        Commands["Commands & Handlers (Crear, UpdatePrice, AdjustStock, Desactivar)"]
         Queries["Queries & Handlers (Listar, ObtenerPorId)"]
         Abstractions["IUnitOfWork"]
-        Dtos["DTOs (ProductoDto, CategoriaDto)"]
+        Dtos["DTOs (ProductDto, CategoryDto)"]
     end
 
-    subgraph Domain["Catalogo.Domain (Núcleo de Dominio)"]
-        Entities["Entidades (Producto, Categoria)"]
-        ValueObjects["Value Objects (Precio)"]
+    subgraph Domain["Catalog.Domain (Núcleo de Dominio)"]
+        Entities["Entidades (Product, Category)"]
+        ValueObjects["Value Objects (Price)"]
         DomainExceptions["Domain Exceptions"]
-        RepoInterfaces["Interfaces de Repositorio (IProductoRepository, ICategoriaRepository)"]
+        RepoInterfaces["Interfaces de Repositorio (IProductRepository, ICategoryRepository)"]
     end
 
-    subgraph Infrastructure["Catalogo.Infrastructure (Persistencia & Datos)"]
-        DbContext["EF Core CatalogoDbContext"]
-        RepoImpl["Repositorios (ProductoRepository, CategoriaRepository)"]
+    subgraph Infrastructure["Catalog.Infrastructure (Persistencia & Datos)"]
+        DbContext["EF Core CatalogDbContext"]
+        RepoImpl["Repositorios (ProductRepository, CategoryRepository)"]
         UoWImpl["UnitOfWork"]
         Migrations["Migraciones automáticas al iniciar"]
     end
 
     subgraph Database["Almacenamiento (Contenedor Docker)"]
-        Postgres[("PostgreSQL 17 (catalogo-db:5432)")]
+        Postgres[("PostgreSQL 17 (catalog-db:5432)")]
     end
 
     %% Flujo de peticiones
@@ -263,7 +263,7 @@ flowchart TD
 
 ### Patrones aplicados
 
-- **DDD:** `Producto` es la raíz de agregado y protege sus reglas (precio mayor a cero, stock no negativo, no modificar productos desactivados). `Precio` es un value object inmutable. `Producto` referencia a `Categoria` solo por su Id.
+- **DDD:** `Product` es la raíz de agregado y protege sus reglas (precio mayor a cero, stock no negativo, no modificar productos desactivados). `Price` es un value object inmutable. `Product` referencia a `Category` solo por su Id.
 - **CQRS:** las operaciones que escriben (Commands) están separadas de las que leen (Queries).
 - **Mediator:** los controllers solo envían Commands y Queries con `ISender` de MediatR; no conocen a los handlers.
 - **Repository:** las interfaces están en el dominio y las implementaciones en infraestructura.
@@ -274,16 +274,16 @@ flowchart TD
 ## Estructura del Proyecto
 
 ```text
-├── Catalogo.slnx
+├── Catalog.slnx
 ├── Dockerfile
 ├── docker-compose.yml
 ├── docs/
 │   └── Catalogo.postman_collection.json
 └── src/
-    ├── Catalogo.Domain/          # Entidades, Value Objects, excepciones y reglas de negocio
-    ├── Catalogo.Application/     # Casos de uso (Commands/Queries con MediatR) y DTOs
-    ├── Catalogo.Infrastructure/  # Persistencia con EF Core, repositorios, Unit of Work y migraciones
-    └── Catalogo.API/             # Controladores REST, manejo de errores y configuración de inicio
+    ├── Catalog.Domain/          # Entidades, Value Objects, excepciones y reglas de negocio
+    ├── Catalog.Application/     # Casos de uso (Commands/Queries con MediatR) y DTOs
+    ├── Catalog.Infrastructure/  # Persistencia con EF Core, repositorios, Unit of Work y migraciones
+    └── Catalog.API/             # Controladores REST, manejo de errores y configuración de inicio
 ```
 
 ---
