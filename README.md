@@ -21,12 +21,16 @@ Microservicio para la gestión de productos y categorías del e-commerce de elec
 
 ## Gestión de Contenedores (Docker Compose)
 
-El entorno incluye dos servicios definidos en [`docker-compose.yml`](docker-compose.yml):
+El entorno incluye estos servicios definidos en [`docker-compose.yml`](docker-compose.yml):
 
-- **`catalog-api`**: API REST en .NET expuesta en el puerto `5080`.
-- **`catalog-db`**: Base de datos PostgreSQL 17 expuesta en el puerto `5433`.
+| Servicio | Descripción | Puerto |
+| :--- | :--- | :--- |
+| `catalog-api` | API REST del catálogo | `5080` |
+| `catalog-db` | PostgreSQL 17 del catálogo | `5433` |
+| `identity-api` | API de Identity (usuarios, roles y Seeders) | `5081` |
+| `identity-db` | PostgreSQL 17 de Identity | `5434` |
 
-La API espera a que la base de datos esté lista (`healthcheck`) y aplica las migraciones automáticamente al iniciar.
+Cada API espera a que su base de datos esté lista (`healthcheck`) y aplica las migraciones automáticamente al iniciar.
 
 ### Inicio rápido
 
@@ -34,7 +38,7 @@ La API espera a que la base de datos esté lista (`healthcheck`) y aplica las mi
 docker compose up -d --build
 ```
 
-Swagger queda disponible en http://localhost:5080/swagger.
+Swagger queda disponible en http://localhost:5080/swagger (Catalog) y http://localhost:5081/swagger (Identity).
 
 ### Comandos más utilizados
 
@@ -101,6 +105,55 @@ dotnet ef migrations add NombreMigracion \
   --startup-project src/Catalog.API \
   --output-dir Persistence/Migrations
 ```
+
+---
+
+## Identity (`Identity.API`)
+
+Microservicio de usuarios y roles con **ASP.NET Core Identity** y **Entity Framework Core** sobre PostgreSQL. No expone CRUD de usuarios ni de roles: los datos iniciales los crean los Seeders. El contrato completo (roles, JWT y claims) está en [`docs/contrato-identidad.md`](docs/contrato-identidad.md).
+
+### Usuarios y roles iniciales
+
+Al iniciar en entorno `Development`, `Identity.API` aplica la migración y ejecuta el Seeder. Es idempotente: si los datos ya existen, no los duplica ni cambia las contraseñas.
+
+| Correo | Rol | Contraseña (solo desarrollo) |
+| :--- | :--- | :--- |
+| `admin@ecommerce.local` | `Admin` | `Admin123!` |
+| `vendedor@ecommerce.local` | `Vendedor` | `Vendedor123!` |
+| `cliente@ecommerce.local` | `Cliente` | `Cliente123!` |
+
+Los correos están en `appsettings.json` y las contraseñas en `appsettings.Development.json` (sección `SeedUsers`). Se pueden sobrescribir con variables de entorno, por ejemplo `SeedUsers__Admin__Password`. Las contraseñas se guardan con el hasher de ASP.NET Core Identity, nunca en texto plano.
+
+### Verificar los Seeders
+
+```bash
+docker compose up -d --build identity-db identity-api
+
+# Logs del Seeder
+docker compose logs identity-api | grep "Seed:"
+
+# Usuarios y roles en la base de datos
+docker compose exec identity-db psql -U identity -d identity -c \
+  'SELECT u."Email", r."Name" AS rol FROM "AspNetUsers" u
+   JOIN "AspNetUserRoles" ur ON ur."UserId" = u."Id"
+   JOIN "AspNetRoles" r ON r."Id" = ur."RoleId" ORDER BY r."Name";'
+```
+
+### Ejecución local y migraciones
+
+```bash
+docker compose up -d identity-db
+dotnet run --project src/Identity.API
+```
+
+La herramienta `dotnet-ef` está fijada en [`.config/dotnet-tools.json`](.config/dotnet-tools.json). Se instala con `dotnet tool restore` y funciona igual en Windows, Linux y macOS:
+
+```bash
+dotnet tool restore
+dotnet ef migrations add NombreMigracion --project src/Identity.API --output-dir Data/Migrations
+```
+
+> **Nota:** en la primera ejecución sobre una base vacía, el log muestra un `fail` sobre la tabla `__EFMigrationsHistory`. Es normal: EF Core la consulta antes de crearla.
 
 ---
 
@@ -275,11 +328,15 @@ flowchart TD
 
 ```text
 ├── Catalog.slnx
-├── Dockerfile
+├── Dockerfile                   # Imagen de Catalog.API
 ├── docker-compose.yml
+├── .config/dotnet-tools.json    # Versión fija de dotnet-ef
 ├── docs/
-│   └── Catalogo.postman_collection.json
+│   ├── Catalogo.postman_collection.json
+│   ├── contrato-identidad.md
+│   └── propuestas-microservicio-2.md
 └── src/
+    ├── Identity.API/            # ASP.NET Core Identity, EF Core, migraciones y Seeders (con su Dockerfile)
     ├── Catalog.Domain/          # Entidades, Value Objects, excepciones y reglas de negocio
     ├── Catalog.Application/     # Casos de uso (Commands/Queries con MediatR) y DTOs
     ├── Catalog.Infrastructure/  # Persistencia con EF Core, repositorios, Unit of Work y migraciones
