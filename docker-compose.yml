@@ -53,6 +53,10 @@ services:
       dockerfile: src/Identity.API/Dockerfile
     container_name: identity-api
     environment:
+      Jwt__Issuer: "identity-service"
+      Jwt__Audience: "ecommerce-api"
+      Jwt__Key: "i9Tkp83ubKEMy6feh/vgLUxAC+ICbcwTPN5PHzUIGKvqrpCnEfKUhJRxWED3/6N5"
+      Jwt__ExpirationMinutes: "60"  
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__IdentityDb: Host=identity-db;Port=5432;Database=identity;Username=identity;Password=identity123
     ports:
