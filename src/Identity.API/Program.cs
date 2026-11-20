@@ -1,3 +1,5 @@
+using Identity.API.Services;
+using Identity.API.Settings;
 using Identity.API.Data;
 using Identity.API.Data.Seeding;
 using Microsoft.AspNetCore.Identity;
@@ -25,6 +27,9 @@ builder.Services.AddScoped<IdentitySeeder>();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddSwaggerGen();
+
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 var app = builder.Build();
 
