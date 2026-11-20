@@ -1,0 +1,24 @@
+# Normaliza los saltos de línea para que el repo se comporte igual en Windows, Linux y macOS.
+# En el repositorio todo se guarda con LF; al hacer checkout se respeta LF en todos los sistemas.
+* text=auto eol=lf
+
+# Archivos que deben usar siempre LF (se ejecutan en contenedores Linux)
+*.sh      text eol=lf
+Dockerfile text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+
+# Archivos exclusivos de Windows
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# Binarios
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.pdf     binary
+*.dll     binary
+*.exe     binary
