@@ -1,4 +1,5 @@
 using Catalog.API.Errors;
+using Catalog.API.Security;
 using Catalog.Application;
 using Catalog.Infrastructure;
 
@@ -19,6 +20,9 @@ builder.Services.AddControllers(options =>
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
 });
 
+// Security: validate JWTs issued by Identity.API
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddSwaggerGen();
@@ -33,6 +37,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
     await app.Services.ApplyMigrationsAsync();
 }
+
+app.UseAuthentication(); // who are you? (401)
+app.UseAuthorization();  // are you allowed? (403)
 
 app.MapControllers();
 
