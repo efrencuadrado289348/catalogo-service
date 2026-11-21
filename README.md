@@ -1,6 +1,6 @@
-# Catálogo Service
+# E-Commerce Microservicios — Catálogo, Identity y Pedidos
 
-Microservicio para la gestión de productos y categorías del e-commerce de electrónicos, implementado en **.NET 10** y **PostgreSQL**. Aplica **Clean Architecture** y **Domain-Driven Design (DDD)**, con los patrones **CQRS**, **Mediator**, **Repository** y **Unit of Work**.
+Plataforma de microservicios para un e-commerce de productos electrónicos, implementada en **.NET 10** y **PostgreSQL 17** con **Docker Compose**. Aplica **Clean Architecture**, **Domain-Driven Design (DDD)**, **CQRS con MediatR**, autenticación centralizada con **ASP.NET Core Identity + JWT (HS256)**, autorización basada en **Roles** (`Admin`, `Vendedor`, `Cliente`) y propagación de token entre microservicios (`Pedidos` → `Catalog`).
 
 ## Integrantes
 
@@ -19,308 +19,346 @@ Microservicio para la gestión de productos y categorías del e-commerce de elec
 
 ---
 
-## Gestión de Contenedores (Docker Compose)
+## Instrucciones para Ejecutar el Proyecto
 
-El entorno incluye estos servicios definidos en [`docker-compose.yml`](docker-compose.yml):
+### 1. Configurar el archivo `.env` (Obligatorio)
 
-| Servicio | Descripción | Puerto |
-| :--- | :--- | :--- |
-| `catalog-api` | API REST del catálogo | `5080` |
-| `catalog-db` | PostgreSQL 17 del catálogo | `5433` |
-| `identity-api` | API de Identity (usuarios, roles y Seeders) | `5081` |
-| `identity-db` | PostgreSQL 17 de Identity | `5434` |
+Los tres microservicios comparten la clave simétrica `JWT_KEY` desde un archivo `.env` en la raíz del proyecto. **Sin este archivo `docker compose` no arranca.**
 
-Cada API espera a que su base de datos esté lista (`healthcheck`) y aplica las migraciones automáticamente al iniciar.
+Puedes copiar el archivo de ejemplo incluido en el repositorio:
 
-### Inicio rápido
+```bash
+cp .env.example .env
+```
+
+O crear manualmente el archivo `.env` en la raíz con el siguiente contenido:
+
+```env
+JWT_KEY=i9Tkp83ubKEMy6feh/vgLUxAC+ICbcwTPN5PHzUIGKvqrpCnEfKUhJRxWED3/6N5
+```
+
+### 2. Levantar los 6 contenedores con Docker Compose
 
 ```bash
 docker compose up -d --build
 ```
 
-Swagger queda disponible en http://localhost:5080/swagger (Catalog) y http://localhost:5081/swagger (Identity).
+El entorno levanta 3 microservicios y 3 bases de datos PostgreSQL independientes definidas en [`docker-compose.yml`](docker-compose.yml):
 
-### Comandos más utilizados
+| Servicio | Descripción | Puerto Host | Swagger UI |
+| :--- | :--- | :--- | :--- |
+| `identity-api` | Microservicio de autenticación, usuarios, roles y emisión de JWT | `5081` | http://localhost:5081/swagger |
+| `identity-db` | PostgreSQL 17 de Identity (`identity`) | `5434` | — |
+| `catalog-api` | Microservicio de catálogo de productos y categorías (CQRS/DDD) | `5080` | http://localhost:5080/swagger |
+| `catalog-db` | PostgreSQL 17 de Catálogo (`catalog`) | `5433` | — |
+| `pedidos-api` | Microservicio de pedidos (consulta `catalog-api` reenviando el JWT) | `5082` | http://localhost:5082/swagger |
+| `orders-db` | PostgreSQL 17 de Pedidos (`orders`) | `5435` | — |
 
-#### Iniciar y detener
+Cada API espera a que su base de datos esté saludable (`healthcheck`) y aplica automáticamente sus migraciones de Entity Framework Core al iniciar en `Development` (además, `identity-api` ejecuta los Seeders de usuarios y roles).
+
+### 3. Comandos útiles de Docker Compose
+
 ```bash
-# Iniciar servicios en segundo plano
-docker compose up -d
-
-# Reconstruir imágenes y levantar (usar tras modificar código C#)
-docker compose up -d --build
-
-# Detener los contenedores sin borrarlos
-docker compose stop
-
-# Reanudar contenedores detenidos
-docker compose start
-
-# Reiniciar servicios (o uno en específico: docker compose restart catalog-api)
-docker compose restart
-
-# Detener y remover contenedores y red
-docker compose down
-
-# Detener, remover contenedores y eliminar el volumen de datos de PostgreSQL
-docker compose down -v
-```
-
-#### Monitoreo y logs
-```bash
-# Ver estado y mapeo de puertos de los contenedores
+# Ver el estado de los 6 contenedores
 docker compose ps
 
-# Ver logs en tiempo real de todos los servicios
+# Ver logs en tiempo real de todos los servicios (o de uno en específico)
 docker compose logs -f
+docker compose logs -f identity-api catalog-api pedidos-api
 
-# Ver logs de un servicio específico
-docker compose logs -f catalog-api
-docker compose logs -f catalog-db
-```
-
-#### Acceso directo a contenedores
-```bash
-# Acceder a la consola interactiva psql de PostgreSQL
-docker compose exec catalog-db psql -U catalog -d catalog
-
-# Abrir una terminal interactiva dentro del contenedor de la API
-docker compose exec catalog-api sh
-```
-
-### Ejecución local sin Docker para la API
-
-```bash
-docker compose up -d catalog-db
-dotnet run --project src/Catalog.API
-```
-
-La API usa la cadena de conexión de `appsettings.json` (`localhost:5433`).
-
-Para crear una nueva migración después de cambiar el modelo:
-
-```bash
-dotnet ef migrations add NombreMigracion \
-  --project src/Catalog.Infrastructure \
-  --startup-project src/Catalog.API \
-  --output-dir Persistence/Migrations
+# Detener y eliminar contenedores y volúmenes (para reiniciar con bases limpias)
+docker compose down -v
 ```
 
 ---
 
-## Identity (`Identity.API`)
+## Usuarios Iniciales (Seeders de `Identity.API`)
 
-Microservicio de usuarios y roles con **ASP.NET Core Identity** y **Entity Framework Core** sobre PostgreSQL. No expone CRUD de usuarios ni de roles: los datos iniciales los crean los Seeders. El contrato completo (roles, JWT y claims) está en [`docs/contrato-identidad.md`](docs/contrato-identidad.md).
+Al iniciar, `Identity.API` aplica las migraciones y ejecuta `IdentitySeeder` de forma idempotente:
 
-### Usuarios y roles iniciales
+| Correo | Rol | Contraseña (desarrollo) | Permisos principales |
+| :--- | :--- | :--- | :--- |
+| `admin@ecommerce.local` | `Admin` | `Admin123!` | Crear/desactivar categorías y productos, consultar catálogo y todos los pedidos |
+| `vendedor@ecommerce.local` | `Vendedor` | `Vendedor123!` | Crear productos, actualizar precio/stock, consultar y cambiar estado de pedidos |
+| `cliente@ecommerce.local` | `Cliente` | `Cliente123!` | Consultar catálogo, crear pedidos y consultar únicamente sus propios pedidos |
 
-Al iniciar en entorno `Development`, `Identity.API` aplica la migración y ejecuta el Seeder. Es idempotente: si los datos ya existen, no los duplica ni cambia las contraseñas.
-
-| Correo | Rol | Contraseña (solo desarrollo) |
-| :--- | :--- | :--- |
-| `admin@ecommerce.local` | `Admin` | `Admin123!` |
-| `vendedor@ecommerce.local` | `Vendedor` | `Vendedor123!` |
-| `cliente@ecommerce.local` | `Cliente` | `Cliente123!` |
-
-Los correos están en `appsettings.json` y las contraseñas en `appsettings.Development.json` (sección `SeedUsers`). Se pueden sobrescribir con variables de entorno, por ejemplo `SeedUsers__Admin__Password`. Las contraseñas se guardan con el hasher de ASP.NET Core Identity, nunca en texto plano.
-
-### Verificar los Seeders
+Para verificar en la base de datos que los usuarios y roles fueron creados por el Seeder:
 
 ```bash
-docker compose up -d --build identity-db identity-api
-
-# Logs del Seeder
-docker compose logs identity-api | grep "Seed:"
-
-# Usuarios y roles en la base de datos
 docker compose exec identity-db psql -U identity -d identity -c \
   'SELECT u."Email", r."Name" AS rol FROM "AspNetUsers" u
    JOIN "AspNetUserRoles" ur ON ur."UserId" = u."Id"
    JOIN "AspNetRoles" r ON r."Id" = ur."RoleId" ORDER BY r."Name";'
 ```
 
-### Ejecución local y migraciones
+---
 
-```bash
-docker compose up -d identity-db
-dotnet run --project src/Identity.API
-```
+## Matriz de Acceso por Roles y Endpoints
 
-La herramienta `dotnet-ef` está fijada en [`.config/dotnet-tools.json`](.config/dotnet-tools.json). Se instala con `dotnet tool restore` y funciona igual en Windows, Linux y macOS:
+### 1. Identity (`http://localhost:5081`)
 
-```bash
-dotnet tool restore
-dotnet ef migrations add NombreMigracion --project src/Identity.API --output-dir Data/Migrations
-```
+| Método | Ruta | Acceso | Descripción | Respuestas |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/login` | Público | Autentica con correo y contraseña y devuelve el JWT (`accessToken`) | `200 OK`, `401 Unauthorized` |
 
-> **Nota:** en la primera ejecución sobre una base vacía, el log muestra un `fail` sobre la tabla `__EFMigrationsHistory`. Es normal: EF Core la consulta antes de crearla.
+### 2. Catálogo (`http://localhost:5080`)
+
+| Método | Ruta | Roles permitidos | Descripción | Respuestas |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/categories` | `Admin`, `Vendedor`, `Cliente` | Lista todas las categorías | `200 OK`, `401` |
+| `GET` | `/api/categories/{id}` | `Admin`, `Vendedor`, `Cliente` | Obtiene una categoría por ID | `200 OK`, `401`, `404` |
+| `POST` | `/api/categories` | `Admin` | Crea una nueva categoría | `201 Created`, `400`, `401`, `403` |
+| `GET` | `/api/products` | `Admin`, `Vendedor`, `Cliente` | Lista productos (`?categoryId={guid}` opcional) | `200 OK`, `401` |
+| `GET` | `/api/products/{id}` | `Admin`, `Vendedor`, `Cliente` | Obtiene un producto por ID | `200 OK`, `401`, `404` |
+| `POST` | `/api/products` | `Admin`, `Vendedor` | Crea un nuevo producto | `201 Created`, `400`, `401`, `403` |
+| `PATCH` | `/api/products/{id}/price` | `Admin`, `Vendedor` | Actualiza el precio y moneda del producto | `204 No Content`, `400`, `401`, `403`, `404` |
+| `PATCH` | `/api/products/{id}/stock` | `Admin`, `Vendedor` | Ajusta el inventario (suma o resta) | `204 No Content`, `400`, `401`, `403`, `404` |
+| `PATCH` | `/api/products/{id}/deactivate` | `Admin` | Desactiva un producto | `204 No Content`, `400`, `401`, `403`, `404` |
+
+### 3. Pedidos (`http://localhost:5082`)
+
+| Método | Ruta | Roles permitidos | Descripción | Respuestas |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/orders` | `Cliente` | Crea un pedido (reenvía el JWT a `Catalog` para validar precio y producto) | `201 Created`, `400`, `401`, `403` |
+| `GET` | `/api/orders` | `Admin`, `Vendedor`, `Cliente` | Lista pedidos (`Cliente` ve solo los suyos; `Admin`/`Vendedor` ven todos) | `200 OK`, `401` |
+| `GET` | `/api/orders/{id}` | `Admin`, `Vendedor`, `Cliente` | Obtiene un pedido por ID (`403` si un `Cliente` consulta el de otro usuario) | `200 OK`, `401`, `403`, `404` |
+| `PATCH` | `/api/orders/{id}/status` | `Vendedor` | Cambia el estado del pedido (`Confirmed`, `Shipped`, `Delivered`, `Cancelled`) | `200 OK`, `400`, `401`, `403`, `404` |
 
 ---
 
-## Documentación de Endpoints
+## Guía Paso a Paso de Pruebas en Swagger UI
 
-- **URL Base:** `http://localhost:5080`
-- **Swagger UI:** `http://localhost:5080/swagger` (disponible en entorno `Development`)
+Tanto **Catalog API** (`http://localhost:5080/swagger`) como **Pedidos API** (`http://localhost:5082/swagger`) cuentan con el botón **Authorize** configurado con esquema HTTP Bearer JWT: solo debes pegar el valor de `accessToken` (sin escribir la palabra `Bearer`).
 
----
+### Paso 1: Probar el acceso sin token (`401 Unauthorized`)
 
-### Categorías (`/api/categories`)
-
-| Método | Ruta | Descripción | Respuestas |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/categories` | Crea una nueva categoría | `201 Created`, `400 Bad Request` |
-| `GET` | `/api/categories` | Lista todas las categorías | `200 OK` |
-| `GET` | `/api/categories/{id}` | Obtiene una categoría por su ID (`Guid`) | `200 OK`, `404 Not Found` |
-
-#### Payload: Crear categoría (`POST /api/categories`)
-```json
-{
-  "name": "Electrónica"
-}
-```
+1. Abrir **Catalog Swagger**: http://localhost:5080/swagger (asegurarse de no tener sesión activa en el botón **Authorize**).
+2. Desplegar `GET /api/products` → clic en **Try it out** → **Execute**.
+   - **Resultado esperado:** `401 Unauthorized` (cabecera `www-authenticate: Bearer`).
+3. Abrir **Pedidos Swagger**: http://localhost:5082/swagger.
+4. Desplegar `GET /api/orders` o `POST /api/orders` → **Try it out** → **Execute**.
+   - **Resultado esperado:** `401 Unauthorized`.
 
 ---
 
-### Productos (`/api/products`)
+### Paso 2: Obtener tokens válidos en Identity (`200 OK`)
 
-| Método | Ruta | Descripción | Respuestas |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/products` | Crea un nuevo producto | `201 Created`, `400 Bad Request` |
-| `GET` | `/api/products` | Lista productos (filtro opcional: `?categoriaId={guid}`) | `200 OK` |
-| `GET` | `/api/products/{id}` | Obtiene un producto por su ID (`Guid`) | `200 OK`, `404 Not Found` |
-| `PATCH` | `/api/products/{id}/price` | Actualiza el precio y moneda | `204 No Content`, `400`, `404` |
-| `PATCH` | `/api/products/{id}/stock` | Ajusta el inventario (suma o resta) | `204 No Content`, `400`, `404` |
-| `PATCH` | `/api/products/{id}/deactivate` | Marca el producto como inactivo | `204 No Content`, `400`, `404` |
-
-#### Payload: Crear producto (`POST /api/products`)
-```json
-{
-  "name": "Teclado Mecánico",
-  "description": "Teclado inalámbrico RGB",
-  "price": 89.99,
-  "currency": "USD",
-  "stock": 25,
-  "categoryId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-}
-```
-
-#### Payload: Actualizar precio (`PATCH /api/products/{id}/price`)
-```json
-{
-  "amount": 79.99,
-  "currency": "USD"
-}
-```
-
-#### Payload: Ajustar stock (`PATCH /api/products/{id}/stock`)
-```json
-{
-  "quantity": 10
-}
-```
-> **Nota:** Para restar inventario se envían valores negativos (ej. `"quantity": -5`).
+1. Abrir **Identity Swagger**: http://localhost:5081/swagger.
+2. Desplegar `POST /api/auth/login` → **Try it out**.
+3. Ejecutar con cada uno de los 3 usuarios y copiar el campo `accessToken` de la respuesta `200 OK`:
+   - **Cliente:**
+     ```json
+     {
+       "email": "cliente@ecommerce.local",
+       "password": "Cliente123!"
+     }
+     ```
+   - **Vendedor:**
+     ```json
+     {
+       "email": "vendedor@ecommerce.local",
+       "password": "Vendedor123!"
+     }
+     ```
+   - **Admin:**
+     ```json
+     {
+       "email": "admin@ecommerce.local",
+       "password": "Admin123!"
+     }
+     ```
 
 ---
+
+### Paso 3: Probar el acceso con un token válido (`200 OK`)
+
+1. En **Catalog Swagger** (http://localhost:5080/swagger), hacer clic en el botón **Authorize** (arriba a la derecha).
+2. Pegar el `accessToken` del **Cliente** en el campo `Value` → clic en **Authorize** → **Close**.
+3. Ejecutar `GET /api/products` y `GET /api/categories`.
+   - **Resultado esperado:** `200 OK`.
+
+---
+
+### Paso 4: Verificar el acceso según los roles (`403 Forbidden` vs `201 Created` / `200 OK`)
+
+#### A. En Catalog Swagger (http://localhost:5080/swagger)
+
+1. **Con token de `Cliente`** (ya autenticado en el paso anterior):
+   - Ejecutar `POST /api/categories` con:
+     ```json
+     {
+       "name": "Portátiles",
+       "description": "Equipos portátiles"
+     }
+     ```
+     - **Resultado esperado:** `403 Forbidden` (solo `Admin` puede crear categorías).
+   - Ejecutar `POST /api/products`.
+     - **Resultado esperado:** `403 Forbidden` (solo `Admin` o `Vendedor` pueden crear productos).
+
+2. **Cambiar al token de `Vendedor`** (botón **Authorize** → **Logout** → pegar `accessToken` de `Vendedor` → **Authorize**):
+   - Ejecutar `POST /api/categories` con `{"name": "Portátiles", "description": "Equipos portátiles"}`.
+     - **Resultado esperado:** `403 Forbidden` (solo `Admin` puede crear categorías).
+
+3. **Cambiar al token de `Admin`** (botón **Authorize** → **Logout** → pegar `accessToken` de `Admin` → **Authorize**):
+   - Ejecutar `POST /api/categories` con:
+     ```json
+     {
+       "name": "Portátiles",
+       "description": "Equipos portátiles"
+     }
+     ```
+     - **Resultado esperado:** `201 Created`. Copiar el `id` de la categoría creada.
+
+4. **Volver al token de `Vendedor`** (botón **Authorize** → **Logout** → pegar `accessToken` de `Vendedor` → **Authorize**):
+   - Ejecutar `POST /api/products` reemplazando `categoryId` por el `id` obtenido:
+     ```json
+     {
+       "name": "Lenovo ThinkPad X1 Carbon",
+       "description": "Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD",
+       "price": 7500000,
+       "currency": "COP",
+       "stock": 10,
+       "categoryId": "PEGAR_AQUI_CATEGORY_ID"
+     }
+     ```
+     - **Resultado esperado:** `201 Created`. Copiar el `id` del producto creado.
+   - Ejecutar `PATCH /api/products/{id}/deactivate` con el `id` del producto.
+     - **Resultado esperado:** `403 Forbidden` (solo `Admin` puede desactivar productos).
+
+#### B. En Pedidos Swagger (http://localhost:5082/swagger) — Integración `Pedidos` → `Catalog`
+
+1. **Con token de `Vendedor`** (clic en **Authorize** en http://localhost:5082/swagger → pegar `accessToken` de `Vendedor` → **Authorize**):
+   - Ejecutar `POST /api/orders` con el `productId` creado en Catálogo:
+     ```json
+     {
+       "items": [
+         {
+           "productId": "PEGAR_AQUI_PRODUCT_ID",
+           "quantity": 2
+         }
+       ]
+     }
+     ```
+     - **Resultado esperado:** `403 Forbidden` (solo el rol `Cliente` puede crear pedidos).
+
+2. **Cambiar al token de `Cliente`** (botón **Authorize** → **Logout** → pegar `accessToken` de `Cliente` → **Authorize**):
+   - Ejecutar `POST /api/orders` con el mismo JSON anterior.
+     - **Resultado esperado:** `201 Created` (`Pedidos.API` reenvía el JWT del cliente a `Catalog.API` mediante `ForwardAuthorizationHandler`, obtiene el nombre y precio del producto y registra el pedido en `orders-db`). Copiar el `id` del pedido creado.
+   - Ejecutar `PATCH /api/orders/{id}/status` con `{"status": "Confirmed"}`.
+     - **Resultado esperado:** `403 Forbidden` (solo `Vendedor` puede cambiar el estado de un pedido).
+
+3. **Cambiar al token de `Vendedor`** (botón **Authorize** → **Logout** → pegar `accessToken` de `Vendedor` → **Authorize**):
+   - Ejecutar `PATCH /api/orders/{id}/status` con:
+     ```json
+     {
+       "status": "Confirmed"
+     }
+     ```
+     - **Resultado esperado:** `200 OK` con el pedido actualizado a estado `Confirmed` (`2`).
+
+---
+
+### Paso 5: Probar tokens inválidos o expirados (`401 Unauthorized`)
+
+#### A. Token inválido (firma alterada o malformado)
+
+1. En **Catalog Swagger** (http://localhost:5080/swagger) o **Pedidos Swagger** (http://localhost:5082/swagger), abrir **Authorize** → **Logout**.
+2. Pegar cualquier token válido pero cambiando sus últimos caracteres (por ejemplo, reemplazar los últimos 2 caracteres por `xx`) → **Authorize**.
+3. Ejecutar `GET /api/products` (o `GET /api/orders`).
+   - **Resultado esperado:** `401 Unauthorized` (`www-authenticate: Bearer error="invalid_token", error_description="The signature is invalid"`).
+
+#### B. Token expirado
+
+**Opción 1 — Prueba inmediata en Swagger con un token ya expirado (firmado con la misma `JWT_KEY`):**
+
+1. En **Catalog Swagger** o **Pedidos Swagger**, abrir **Authorize** → **Logout**.
+2. Pegar el siguiente token (firmado con la `JWT_KEY` del proyecto, `iss: identity-service`, `aud: ecommerce-api`, pero con fecha `exp` expirada):
+   ```text
+   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJlbWFpbCI6ImNsaWVudGVAZWNvbW1lcmNlLmxvY2FsIiwibmFtZSI6ImNsaWVudGVAZWNvbW1lcmNlLmxvY2FsIiwianRpIjoiMjIyMjIyMjItMjIyMi0yMjIyLTIyMjItMjIyMjIyMjIyMjIyIiwicm9sZSI6IkNsaWVudGUiLCJuYmYiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAwMzYwMCwiaWF0IjoxNzAwMDAwMDAwLCJpc3MiOiJpZGVudGl0eS1zZXJ2aWNlIiwiYXVkIjoiZWNvbW1lcmNlLWFwaSJ9.hJcjBXB3c7QXxSRFtXGDHm26o5QeqYvfNqRfrmHknhk
+   ```
+3. Ejecutar `GET /api/products` o `GET /api/orders`.
+   - **Resultado esperado:** `401 Unauthorized` con cabecera `www-authenticate: Bearer error="invalid_token", error_description="The token expired at '11/14/2023 22:13:20'"`.
+
+**Opción 2 — Emitir un token en vivo con expiración de 1 minuto:**
+
+1. En `docker-compose.yml`, cambiar en `identity-api` la variable `Jwt__ExpirationMinutes: "1"` y aplicar el cambio:
+   ```bash
+   docker compose up -d --build identity-api
+   ```
+2. Hacer login en **Identity Swagger** (`POST /api/auth/login`), autorizarse en **Catalog Swagger** con el token obtenido y verificar que `GET /api/products` responde `200 OK`.
+3. Esperar 65 segundos (`ClockSkew` está configurado en `TimeSpan.Zero`) y volver a pulsar **Execute** en `GET /api/products`.
+   - **Resultado esperado:** `401 Unauthorized` por expiración del token.
+
+---
+
+## Script Automatizado de Pruebas y Colección de Postman
+
+### Script de PowerShell (`pruebas-seguridad.ps1`)
+
+En la raíz del proyecto se incluye [`pruebas-seguridad.ps1`](pruebas-seguridad.ps1), que automatiza el login con los 3 usuarios y ejecuta las validaciones de `401`, `403`, `200` y `201` en `Identity`, `Catalog` y `Pedidos`:
+
+```powershell
+# En Windows PowerShell o PowerShell Core (pwsh)
+powershell -ExecutionPolicy Bypass -File .\pruebas-seguridad.ps1
+
+# Opcional: incluyendo la espera de 70s cuando Jwt__ExpirationMinutes="1"
+powershell -ExecutionPolicy Bypass -File .\pruebas-seguridad.ps1 -ProbarExpirado
+```
 
 ### Colección de Postman
 
-El archivo [`docs/Catalogo.postman_collection.json`](docs/Catalogo.postman_collection.json) tiene 22 peticiones: 9 del flujo exitoso y 13 de errores de validación de dominio. Para ejecutarla:
+El archivo [`docs/Catalogo.postman_collection.json`](docs/Catalogo.postman_collection.json) incluye 39 peticiones organizadas en 5 carpetas (Autenticación en Identity, Seguridad JWT y Roles 401/403, Flujo exitoso de Catálogo, Flujo exitoso de Pedidos y Validaciones de dominio):
 
 1. Partir de una base limpia: `docker compose down -v && docker compose up -d --build`.
-2. En Postman: **Import** → seleccionar el archivo → **Run collection**.
-
-### Formato de errores
-
-Los errores se devuelven en formato **ProblemDetails** (RFC 9457). Ejemplo al crear una categoría duplicada:
-
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-  "title": "Regla de negocio violada",
-  "status": 400,
-  "detail": "Ya existe una categoría con el nombre 'Prueba'."
-}
-```
-
-| Código | Cuándo ocurre |
-| :--- | :--- |
-| `400` | Se viola una regla de negocio del dominio |
-| `404` | El recurso solicitado no existe |
-| `500` | Error inesperado (sin exponer detalles internos) |
+2. En Postman: **Import** → seleccionar [`docs/Catalogo.postman_collection.json`](docs/Catalogo.postman_collection.json) → **Run collection**.
 
 ---
 
 ## Arquitectura del Sistema
 
-El proyecto implementa **Clean Architecture**: las dependencias apuntan hacia el dominio, que no depende de ninguna otra capa. La capa de aplicación usa **CQRS** con **MediatR**, manteniendo el núcleo de negocio desacoplado de la infraestructura y la presentación.
-
 ```mermaid
 flowchart TD
     subgraph Clients["Clientes y Consumidores"]
-        Client["Cliente HTTP / Postman / Swagger UI"]
+        Swagger["Swagger UI / Postman / PowerShell"]
     end
 
-    subgraph API["Catalog.API (Presentación)"]
-        Controllers["Controllers (CategoriesController, ProductsController)"]
-        ExceptionHandling["GlobalExceptionHandler & ProblemDetails"]
+    subgraph IdentityService["Identity.API (Puerto 5081)"]
+        AuthCtrl["AuthController (POST /api/auth/login)"]
+        JwtSvc["JwtTokenService (HS256)"]
+        Seeder["IdentitySeeder (Admin, Vendedor, Cliente)"]
+        IdentityDb[("PostgreSQL 17 (identity-db:5434)")]
+        AuthCtrl --> JwtSvc
+        AuthCtrl --> IdentityDb
+        Seeder --> IdentityDb
     end
 
-    subgraph Application["Catalog.Application (Casos de Uso - CQRS)"]
-        MediatR["MediatR (ISender)"]
-        Commands["Commands & Handlers (Crear, UpdatePrice, AdjustStock, Desactivar)"]
-        Queries["Queries & Handlers (Listar, ObtenerPorId)"]
-        Abstractions["IUnitOfWork"]
-        Dtos["DTOs (ProductDto, CategoryDto)"]
+    subgraph CatalogService["Catalog.API (Puerto 5080) - Clean Architecture + CQRS"]
+        CatAuth["JWT Bearer Validation (ClockSkew = 0) & Role Authorization"]
+        CatCtrl["CategoriesController & ProductsController"]
+        MediatR["MediatR (Commands & Queries)"]
+        CatDomain["Catalog.Domain (Product, Category, Price)"]
+        CatInfra["Catalog.Infrastructure (EF Core + UnitOfWork)"]
+        CatalogDb[("PostgreSQL 17 (catalog-db:5433)")]
+        CatAuth --> CatCtrl --> MediatR --> CatDomain
+        MediatR --> CatInfra --> CatalogDb
     end
 
-    subgraph Domain["Catalog.Domain (Núcleo de Dominio)"]
-        Entities["Entidades (Product, Category)"]
-        ValueObjects["Value Objects (Price)"]
-        DomainExceptions["Domain Exceptions"]
-        RepoInterfaces["Interfaces de Repositorio (IProductRepository, ICategoryRepository)"]
+    subgraph PedidosService["Pedidos.API (Puerto 5082) - Clean Architecture"]
+        OrdAuth["JWT Bearer Validation (ClockSkew = 0) & Role Authorization"]
+        OrdCtrl["OrdersController"]
+        OrdSvc["OrderService"]
+        FwdHandler["ForwardAuthorizationHandler (Reenvía Bearer JWT)"]
+        OrdInfra["OrderRepository (EF Core)"]
+        OrdersDb[("PostgreSQL 17 (orders-db:5435)")]
+        OrdAuth --> OrdCtrl --> OrdSvc --> OrdInfra --> OrdersDb
+        OrdSvc --> FwdHandler
     end
 
-    subgraph Infrastructure["Catalog.Infrastructure (Persistencia & Datos)"]
-        DbContext["EF Core CatalogDbContext"]
-        RepoImpl["Repositorios (ProductRepository, CategoryRepository)"]
-        UoWImpl["UnitOfWork"]
-        Migrations["Migraciones automáticas al iniciar"]
-    end
-
-    subgraph Database["Almacenamiento (Contenedor Docker)"]
-        Postgres[("PostgreSQL 17 (catalog-db:5432)")]
-    end
-
-    %% Flujo de peticiones
-    Client -->|"HTTP Requests (Puerto 5080)"| Controllers
-    Controllers --> ExceptionHandling
-    Controllers -->|"Envía Command / Query"| MediatR
-    MediatR --> Commands
-    MediatR --> Queries
-
-    %% Capa de Aplicación interactuando con Dominio
-    Commands -->|"Crea / Modifica"| Entities
-    Commands -->|"Valida con"| ValueObjects
-    Commands -->|"Invoca"| RepoInterfaces
-    Commands -->|"Confirma cambios con"| Abstractions
-    Queries -->|"Consulta vía"| RepoInterfaces
-    Queries -->|"Devuelve"| Dtos
-
-    %% Inversión de dependencias (Infraestructura implementa interfaces)
-    RepoImpl -.->|"Implementa"| RepoInterfaces
-    UoWImpl -.->|"Implementa"| Abstractions
-    RepoImpl --> DbContext
-    UoWImpl --> DbContext
-    DbContext -->|"Npgsql"| Postgres
+    Swagger -->|"1. Login (credenciales)"| AuthCtrl
+    Swagger -->|"2. Bearer JWT"| CatAuth
+    Swagger -->|"3. Bearer JWT"| OrdAuth
+    FwdHandler -->|"4. GET /api/products/{id} (Bearer JWT)"| CatAuth
 ```
-
-### Patrones aplicados
-
-- **DDD:** `Product` es la raíz de agregado y protege sus reglas (precio mayor a cero, stock no negativo, no modificar productos desactivados). `Price` es un value object inmutable. `Product` referencia a `Category` solo por su Id.
-- **CQRS:** las operaciones que escriben (Commands) están separadas de las que leen (Queries).
-- **Mediator:** los controllers solo envían Commands y Queries con `ISender` de MediatR; no conocen a los handlers.
-- **Repository:** las interfaces están en el dominio y las implementaciones en infraestructura.
-- **Unit of Work:** los repositorios solo agregan o modifican; `IUnitOfWork.SaveChangesAsync` confirma todo en una sola transacción.
 
 ---
 
@@ -328,28 +366,36 @@ flowchart TD
 
 ```text
 ├── Catalog.slnx
-├── Dockerfile                   # Imagen de Catalog.API
-├── docker-compose.yml
-├── .config/dotnet-tools.json    # Versión fija de dotnet-ef
+├── Dockerfile                         # Imagen Docker de Catalog.API
+├── docker-compose.yml                 # Orquestación de los 6 contenedores
+├── .env.example                       # Plantilla de variables de entorno (JWT_KEY)
+├── pruebas-seguridad.ps1              # Script automatizado de pruebas de seguridad e integración
+├── .config/dotnet-tools.json          # Versión fija de dotnet-ef
 ├── docs/
 │   ├── Catalogo.postman_collection.json
 │   ├── contrato-identidad.md
 │   └── propuestas-microservicio-2.md
-└── src/
-    ├── Identity.API/            # ASP.NET Core Identity, EF Core, migraciones y Seeders (con su Dockerfile)
-    ├── Catalog.Domain/          # Entidades, Value Objects, excepciones y reglas de negocio
-    ├── Catalog.Application/     # Casos de uso (Commands/Queries con MediatR) y DTOs
-    ├── Catalog.Infrastructure/  # Persistencia con EF Core, repositorios, Unit of Work y migraciones
-    └── Catalog.API/             # Controladores REST, manejo de errores y configuración de inicio
+├── src/
+│   ├── Identity.API/                  # ASP.NET Core Identity, EF Core, Seeders y emisión de JWT
+│   ├── Catalog.Domain/                # Entidades, Value Objects y reglas de negocio del catálogo
+│   ├── Catalog.Application/           # Casos de uso CQRS con MediatR y DTOs
+│   ├── Catalog.Infrastructure/        # Persistencia EF Core, repositorios, Unit of Work y migraciones
+│   ├── Catalog.API/                   # Controladores REST, validación JWT/Roles y Swagger con Bearer
+│   ├── Pedidos.Domain/                # Entidades (Order, OrderItem) y estados del pedido
+│   ├── Pedidos.Application/           # Lógica de aplicación de pedidos (OrderService) y DTOs
+│   ├── Pedidos.Infrastructure/        # EF Core, cliente HTTP hacia Catalog y ForwardAuthorizationHandler
+│   └── Pedidos.API/                   # Controladores REST, validación JWT/Roles y Swagger con Bearer
+└── tests/
+    └── Catalog.UnitTests/             # Pruebas unitarias de dominio y aplicación
 ```
 
 ---
 
-## Flujo de trabajo (Git Flow)
+## Flujo de Trabajo (Git Flow)
 
 | Rama | Propósito |
 | :--- | :--- |
-| `main` | Versiones entregadas (tag `v1.0.0`) |
+| `main` | Versiones entregadas |
 | `develop` | Integración del trabajo del equipo |
 | `feature/*` | Una funcionalidad por rama, integrada mediante Pull Request revisado |
 | `release/*` | Preparación de cada entrega |

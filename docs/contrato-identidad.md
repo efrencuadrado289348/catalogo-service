@@ -8,9 +8,9 @@ Este documento fija los acuerdos entre las cinco personas del equipo. Si algo ca
 | :--- | :--- | :--- | :--- |
 | `catalog-api` (primera entrega) | 5080 | 5433 | `catalog` |
 | `identity-api` | 5081 | 5434 | `identity` |
-| Segundo microservicio de negocio | 5082 | 5435 | por definir |
+| `pedidos-api` (segundo microservicio) | 5082 | 5435 | `orders` |
 
-Dentro de la red de Docker los servicios se llaman por su nombre (`identity-api:8080`, `catalog-api:8080`).
+Dentro de la red de Docker los servicios se llaman por su nombre (`identity-api:8080`, `catalog-api:8080`, `pedidos-api:8080`).
 
 ## Roles
 
@@ -109,13 +109,21 @@ Respuesta `200 OK`:
 
 Credenciales inválidas: `401 Unauthorized`.
 
-## Matriz de acceso propuesta para Catalog (Persona 4)
+## Matriz de acceso para Catalog (Persona 4)
 
 | Endpoint | Acceso |
 | :--- | :--- |
-| `GET /api/categories`, `GET /api/products` y por Id | Cualquier usuario autenticado |
+| `GET /api/categories`, `GET /api/products` y por Id | Cualquier usuario autenticado (`Admin`, `Vendedor`, `Cliente`) |
 | `POST /api/products`, `PATCH .../price`, `PATCH .../stock` | `Admin`, `Vendedor` |
 | `POST /api/categories`, `PATCH .../deactivate` | `Admin` |
+
+## Matriz de acceso para Pedidos (Persona 3)
+
+| Endpoint | Acceso |
+| :--- | :--- |
+| `POST /api/orders` | `Cliente` (reenvía el JWT a `Catalog` para consultar los productos) |
+| `GET /api/orders`, `GET /api/orders/{id}` | `Cliente` (solo sus propios pedidos), `Vendedor` y `Admin` (todos los pedidos) |
+| `PATCH /api/orders/{id}/status` | `Vendedor` |
 
 ## Responsabilidades de cada parte en `Identity.API`
 

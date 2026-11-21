@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Pedidos.Application.Services;
 using Pedidos.Infrastructure;
 using Pedidos.Infrastructure.Persistence;
@@ -49,7 +50,7 @@ builder.Services.AddAuthentication(
             RoleClaimType = "role",
             NameClaimType = "sub",
 
-            ClockSkew = TimeSpan.FromMinutes(1)
+            ClockSkew = TimeSpan.Zero
         };
     });
 
@@ -72,12 +73,31 @@ builder.Services.AddScoped<OrderService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Pegar el accessToken obtenido en Identity (POST /api/auth/login) sin el prefijo 'Bearer'."
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
+});
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 
     // Igual que Catalog e Identity: aplica las migraciones al iniciar en Development
     using var scope = app.Services.CreateScope();
