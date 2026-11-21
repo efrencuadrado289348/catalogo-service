@@ -1,16 +1,22 @@
+using Catalog.API.Security;
 using Catalog.Application.Categories.Commands;
 using Catalog.Application.Categories.Queries;
 using Catalog.Application.Dtos;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Catalog.API.Controllers;
 
 [ApiController]
 [Route("api/categories")]
+[Authorize] // any authenticated user; write actions narrow it by role
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public sealed class CategoriesController(ISender sender) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Roles = Roles.Admin)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(CreateCategoryCommand command, CancellationToken ct)

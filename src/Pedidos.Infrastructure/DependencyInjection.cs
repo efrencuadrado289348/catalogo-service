@@ -20,11 +20,16 @@ public static class DependencyInjection
 
         services.AddScoped<IOrderRepository, OrderRepository>();
 
+        // Catalog requires a JWT: forward the one received by Pedidos
+        services.AddHttpContextAccessor();
+        services.AddTransient<ForwardAuthorizationHandler>();
+
         services.AddHttpClient<IProductCatalogService, ProductCatalogService>(
             client =>
             {
                 client.BaseAddress = new Uri(catalogBaseUrl);
-            });
+            })
+            .AddHttpMessageHandler<ForwardAuthorizationHandler>();
 
         return services;
     }

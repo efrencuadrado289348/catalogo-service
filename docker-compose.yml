@@ -25,6 +25,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__CatalogDb: Host=catalog-db;Port=5432;Database=catalog;Username=catalog;Password=catalog123
+      # Must match identity-api (docs/contrato-identidad.md)
+      Jwt__Issuer: "identity-service"
+      Jwt__Audience: "ecommerce-api"
+      Jwt__Key: ${JWT_KEY:?Define JWT_KEY en el archivo .env}
     ports:
       - "5080:8080"
     depends_on:

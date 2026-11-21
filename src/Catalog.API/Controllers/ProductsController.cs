@@ -1,17 +1,23 @@
 using Catalog.API.Contracts;
+using Catalog.API.Security;
 using Catalog.Application.Dtos;
 using Catalog.Application.Products.Commands;
 using Catalog.Application.Products.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Catalog.API.Controllers;
 
 [ApiController]
 [Route("api/products")]
+[Authorize] // any authenticated user; write actions narrow it by role
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public sealed class ProductsController(ISender sender) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Roles = Roles.AdminOrVendedor)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(CreateProductCommand command, CancellationToken ct)
@@ -30,6 +36,8 @@ public sealed class ProductsController(ISender sender) : ControllerBase
         Ok(await sender.Send(new GetProductByIdQuery(id), ct));
 
     [HttpPatch("{id:guid}/price")]
+    [Authorize(Roles = Roles.AdminOrVendedor)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -40,6 +48,8 @@ public sealed class ProductsController(ISender sender) : ControllerBase
     }
 
     [HttpPatch("{id:guid}/stock")]
+    [Authorize(Roles = Roles.AdminOrVendedor)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -50,6 +60,8 @@ public sealed class ProductsController(ISender sender) : ControllerBase
     }
 
     [HttpPatch("{id:guid}/deactivate")]
+    [Authorize(Roles = Roles.Admin)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

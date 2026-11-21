@@ -1,9 +1,10 @@
-
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Pedidos.Application.Services;
 using Pedidos.Infrastructure;
+using Pedidos.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,6 +78,10 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // Igual que Catalog e Identity: aplica las migraciones al iniciar en Development
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<OrdersDbContext>().Database.MigrateAsync();
 }
 
 app.UseAuthentication();
