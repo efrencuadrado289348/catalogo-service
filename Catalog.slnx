@@ -5,6 +5,10 @@
     <Project Path="src/Catalog.Infrastructure/Catalog.Infrastructure.csproj" />
     <Project Path="src/Catalog.API/Catalog.API.csproj" />
     <Project Path="src/Identity.API/Identity.API.csproj" />
+    <Project Path="src/Pedidos.API/Pedidos.API.csproj" />
+    <Project Path="src/Pedidos.Application/Pedidos.Application.csproj" />
+    <Project Path="src/Pedidos.Domain/Pedidos.Domain.csproj" />
+    <Project Path="src/Pedidos.Infrastructure/Pedidos.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Catalog.UnitTests/Catalog.UnitTests.csproj" />

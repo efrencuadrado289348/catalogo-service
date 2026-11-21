@@ -1,3 +1,4 @@
+
 services:
   catalog-db:
     image: postgres:17-alpine
@@ -55,8 +56,8 @@ services:
     environment:
       Jwt__Issuer: "identity-service"
       Jwt__Audience: "ecommerce-api"
-      Jwt__Key: "i9Tkp83ubKEMy6feh/vgLUxAC+ICbcwTPN5PHzUIGKvqrpCnEfKUhJRxWED3/6N5"
-      Jwt__ExpirationMinutes: "60"  
+      Jwt__Key: ${JWT_KEY:?Define JWT_KEY en el archivo .env}
+      Jwt__ExpirationMinutes: "60"
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__IdentityDb: Host=identity-db;Port=5432;Database=identity;Username=identity;Password=identity123
     ports:
@@ -65,6 +66,44 @@ services:
       identity-db:
         condition: service_healthy
 
+  orders-db:
+    image: postgres:17-alpine
+    container_name: orders-db
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders123
+    ports:
+      - "5435:5432"
+    volumes:
+      - orders-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders -d orders"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pedidos-api:
+    build:
+      context: .
+      dockerfile: src/Pedidos.API/Dockerfile
+    container_name: pedidos-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Jwt__Issuer: "identity-service"
+      Jwt__Audience: "ecommerce-api"
+      Jwt__Key: ${JWT_KEY:?Define JWT_KEY en el archivo .env}
+      ConnectionStrings__OrdersDb: Host=orders-db;Port=5432;Database=orders;Username=orders;Password=orders123
+      Services__CatalogBaseUrl: http://catalog-api:8080/
+    ports:
+      - "5082:8080"
+    depends_on:
+      orders-db:
+        condition: service_healthy
+      catalog-api:
+        condition: service_started
+
 volumes:
   catalog-data:
   identity-data:
+  orders-data:
