@@ -1,0 +1,12 @@
+html {
+    font-size: 15px;
+}
+
+.navbar .badge {
+    font-weight: 500;
+}
+
+.table td,
+.table th {
+    vertical-align: middle;
+}
