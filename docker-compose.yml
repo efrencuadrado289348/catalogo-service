@@ -1,3 +1,4 @@
+
 services:
   catalog-db:
     image: postgres:17-alpine
@@ -24,11 +25,89 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__CatalogDb: Host=catalog-db;Port=5432;Database=catalog;Username=catalog;Password=catalog123
+      # Must match identity-api (docs/contrato-identidad.md)
+      Jwt__Issuer: "identity-service"
+      Jwt__Audience: "ecommerce-api"
+      Jwt__Key: ${JWT_KEY:?Define JWT_KEY en el archivo .env}
     ports:
       - "5080:8080"
     depends_on:
       catalog-db:
         condition: service_healthy
 
+  identity-db:
+    image: postgres:17-alpine
+    container_name: identity-db
+    environment:
+      POSTGRES_DB: identity
+      POSTGRES_USER: identity
+      POSTGRES_PASSWORD: identity123
+    ports:
+      - "5434:5432"
+    volumes:
+      - identity-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U identity -d identity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  identity-api:
+    build:
+      context: .
+      dockerfile: src/Identity.API/Dockerfile
+    container_name: identity-api
+    environment:
+      Jwt__Issuer: "identity-service"
+      Jwt__Audience: "ecommerce-api"
+      Jwt__Key: ${JWT_KEY:?Define JWT_KEY en el archivo .env}
+      Jwt__ExpirationMinutes: "60"
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__IdentityDb: Host=identity-db;Port=5432;Database=identity;Username=identity;Password=identity123
+    ports:
+      - "5081:8080"
+    depends_on:
+      identity-db:
+        condition: service_healthy
+
+  orders-db:
+    image: postgres:17-alpine
+    container_name: orders-db
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders123
+    ports:
+      - "5435:5432"
+    volumes:
+      - orders-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders -d orders"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pedidos-api:
+    build:
+      context: .
+      dockerfile: src/Pedidos.API/Dockerfile
+    container_name: pedidos-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Jwt__Issuer: "identity-service"
+      Jwt__Audience: "ecommerce-api"
+      Jwt__Key: ${JWT_KEY:?Define JWT_KEY en el archivo .env}
+      ConnectionStrings__OrdersDb: Host=orders-db;Port=5432;Database=orders;Username=orders;Password=orders123
+      Services__CatalogBaseUrl: http://catalog-api:8080/
+    ports:
+      - "5082:8080"
+    depends_on:
+      orders-db:
+        condition: service_healthy
+      catalog-api:
+        condition: service_started
+
 volumes:
   catalog-data:
+  identity-data:
+  orders-data:

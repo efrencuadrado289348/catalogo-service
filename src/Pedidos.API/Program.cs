@@ -1,0 +1,112 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Pedidos.Application.Services;
+using Pedidos.Infrastructure;
+using Pedidos.Infrastructure.Persistence;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Configuración JWT
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("No se configuró Jwt:Key.");
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"]
+    ?? throw new InvalidOperationException("No se configuró Jwt:Issuer.");
+
+var jwtAudience = builder.Configuration["Jwt:Audience"]
+    ?? throw new InvalidOperationException("No se configuró Jwt:Audience.");
+
+if (Encoding.UTF8.GetByteCount(jwtKey) < 32)
+{
+    throw new InvalidOperationException(
+        "La clave JWT debe tener al menos 32 bytes.");
+}
+
+// Autenticación y autorización
+builder.Services.AddAuthentication(
+    JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // Conserva los nombres originales de los claims del JWT
+        options.MapInboundClaims = false;
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+
+            ValidateLifetime = true,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtKey)),
+
+            RoleClaimType = "role",
+            NameClaimType = "sub",
+
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+// Conexión a PostgreSQL
+var connectionString = builder.Configuration
+    .GetConnectionString("OrdersDb")
+    ?? throw new InvalidOperationException(
+        "No se configuró la conexión OrdersDb.");
+
+// Dirección del microservicio Catalog
+var catalogBaseUrl = builder.Configuration["Services:CatalogBaseUrl"]
+    ?? throw new InvalidOperationException(
+        "No se configuró Services:CatalogBaseUrl.");
+
+// Registro de dependencias
+builder.Services.AddInfrastructure(connectionString, catalogBaseUrl);
+builder.Services.AddScoped<OrderService>();
+
+builder.Services.AddControllers();
+builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Pegar el accessToken obtenido en Identity (POST /api/auth/login) sin el prefijo 'Bearer'."
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
+});
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+
+    // Igual que Catalog e Identity: aplica las migraciones al iniciar en Development
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<OrdersDbContext>().Database.MigrateAsync();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
