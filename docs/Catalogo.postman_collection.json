@@ -1,37 +1,65 @@
 {
   "info": {
-    "name": "Microservicio Catálogo",
-    "description": "Ejecutar las carpetas en orden (Run collection) sobre una base de datos limpia: las peticiones exitosas guardan categoriaId y productoId para las siguientes. Para reiniciar la base: docker compose down -v && docker compose up -d.",
+    "name": "E-Commerce Microservicios (Identity + Catalog + Pedidos)",
+    "description": "Colección completa para la segunda entrega: pruebas de autenticación JWT (Identity), autorización por roles (401/403), flujo exitoso de Catálogo y Pedidos, y validaciones de dominio. Ejecutar en orden (Run collection) sobre una base limpia: docker compose down -v && docker compose up -d --build",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
-      "key": "baseUrl",
+      "key": "identityUrl",
+      "value": "http://localhost:5081"
+    },
+    {
+      "key": "catalogUrl",
       "value": "http://localhost:5080"
     },
     {
-      "key": "categoriaId",
+      "key": "ordersUrl",
+      "value": "http://localhost:5082"
+    },
+    {
+      "key": "clienteToken",
       "value": ""
     },
     {
-      "key": "productoId",
+      "key": "vendedorToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "expiredToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJlbWFpbCI6ImNsaWVudGVAZWNvbW1lcmNlLmxvY2FsIiwibmFtZSI6ImNsaWVudGVAZWNvbW1lcmNlLmxvY2FsIiwianRpIjoiMjIyMjIyMjItMjIyMi0yMjIyLTIyMjItMjIyMjIyMjIyMjIyIiwicm9sZSI6IkNsaWVudGUiLCJuYmYiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAwMzYwMCwiaWF0IjoxNzAwMDAwMDAwLCJpc3MiOiJpZGVudGl0eS1zZXJ2aWNlIiwiYXVkIjoiZWNvbW1lcmNlLWFwaSJ9.hJcjBXB3c7QXxSRFtXGDHm26o5QeqYvfNqRfrmHknhk"
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "orderId",
       "value": ""
     }
   ],
   "item": [
     {
-      "name": "1. Flujo exitoso",
+      "name": "1. Autenticación (Identity)",
       "item": [
         {
-          "name": "Crear categoría",
+          "name": "Login Cliente",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"categoriaId\", pm.response.json().id);"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"clienteToken\", pm.response.json().accessToken);"
                 ]
               }
             }
@@ -44,20 +72,11 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/categorias",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "categorias"
-              ]
-            },
+            "url": "{{identityUrl}}/api/auth/login",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Portátiles\"\n}",
+              "raw": "{\n  \"email\": \"cliente@ecommerce.local\",\n  \"password\": \"Cliente123!\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -67,74 +86,15 @@
           }
         },
         {
-          "name": "Listar categorías",
+          "name": "Login Vendedor",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/categorias",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "categorias"
-              ]
-            },
-            "description": ""
-          }
-        },
-        {
-          "name": "Obtener categoría por id",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/categorias/{{categoriaId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "categorias",
-                "{{categoriaId}}"
-              ]
-            },
-            "description": ""
-          }
-        },
-        {
-          "name": "Crear producto",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"productoId\", pm.response.json().id);"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"vendedorToken\", pm.response.json().accessToken);"
                 ]
               }
             }
@@ -147,20 +107,11 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos"
-              ]
-            },
+            "url": "{{identityUrl}}/api/auth/login",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Lenovo ThinkPad X1 Carbon\",\n  \"descripcion\": \"Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD\",\n  \"precio\": 7500000,\n  \"moneda\": \"COP\",\n  \"stock\": 10,\n  \"categoriaId\": \"{{categoriaId}}\"\n}",
+              "raw": "{\n  \"email\": \"vendedor@ecommerce.local\",\n  \"password\": \"Vendedor123!\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -170,107 +121,32 @@
           }
         },
         {
-          "name": "Obtener producto por id",
+          "name": "Login Admin",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"adminToken\", pm.response.json().accessToken);"
                 ]
               }
             }
           ],
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}"
-              ]
-            },
-            "description": ""
-          }
-        },
-        {
-          "name": "Listar productos por categoría",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos?categoriaId={{categoriaId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos"
-              ],
-              "query": [
-                {
-                  "key": "categoriaId",
-                  "value": "{{categoriaId}}"
-                }
-              ]
-            },
-            "description": ""
-          }
-        },
-        {
-          "name": "Actualizar precio",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}/precio",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}",
-                "precio"
-              ]
-            },
+            "url": "{{identityUrl}}/api/auth/login",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"valor\": 7200000,\n  \"moneda\": \"COP\"\n}",
+              "raw": "{\n  \"email\": \"admin@ecommerce.local\",\n  \"password\": \"Admin123!\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -280,87 +156,31 @@
           }
         },
         {
-          "name": "Ingresar stock (+5)",
+          "name": "Login con credenciales inválidas (401)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
                 ]
               }
             }
           ],
           "request": {
-            "method": "PATCH",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}/stock",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}",
-                "stock"
-              ]
-            },
+            "url": "{{identityUrl}}/api/auth/login",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cantidad\": 5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Descontar stock (-3)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}/stock",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}",
-                "stock"
-              ]
-            },
-            "description": "Stock queda en 12 (10 + 5 - 3).",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"cantidad\": -3\n}",
+              "raw": "{\n  \"email\": \"cliente@ecommerce.local\",\n  \"password\": \"ClaveIncorrecta123!\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -372,17 +192,57 @@
       ]
     },
     {
-      "name": "2. Errores de validación de dominio",
+      "name": "2. Seguridad JWT y Control de Roles (401 y 403)",
       "item": [
         {
-          "name": "Precio negativo",
+          "name": "Catalog - GET products sin token (401)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{catalogUrl}}/api/products",
+            "description": ""
+          }
+        },
+        {
+          "name": "Catalog - GET categories sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{catalogUrl}}/api/categories",
+            "description": ""
+          }
+        },
+        {
+          "name": "Pedidos - POST orders sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
                 ]
               }
             }
@@ -395,20 +255,11 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos"
-              ]
-            },
+            "url": "{{ordersUrl}}/api/orders",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Mouse Logitech MX\",\n  \"descripcion\": \"Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD\",\n  \"precio\": -50000,\n  \"moneda\": \"COP\",\n  \"stock\": 10,\n  \"categoriaId\": \"{{categoriaId}}\"\n}",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"00000000-0000-0000-0000-000000000001\",\n      \"quantity\": 1\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -418,14 +269,114 @@
           }
         },
         {
-          "name": "Moneda inválida",
+          "name": "Catalog - GET products con token alterado/inválido (401)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}xx"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products",
+            "description": ""
+          }
+        },
+        {
+          "name": "Pedidos - GET orders con token alterado/inválido (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}xx"
+              }
+            ],
+            "url": "{{ordersUrl}}/api/orders",
+            "description": ""
+          }
+        },
+        {
+          "name": "Catalog - GET products con token expirado (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{expiredToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products",
+            "description": ""
+          }
+        },
+        {
+          "name": "Pedidos - GET orders con token expirado (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{expiredToken}}"
+              }
+            ],
+            "url": "{{ordersUrl}}/api/orders",
+            "description": ""
+          }
+        },
+        {
+          "name": "Catalog - POST categories como Cliente (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
                 ]
               }
             }
@@ -436,22 +387,17 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos"
-              ]
-            },
+            "url": "{{catalogUrl}}/api/categories",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Mouse Logitech MX\",\n  \"descripcion\": \"Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD\",\n  \"precio\": 7500000,\n  \"moneda\": \"PESOS\",\n  \"stock\": 10,\n  \"categoriaId\": \"{{categoriaId}}\"\n}",
+              "raw": "{\n  \"name\": \"No Autorizada\",\n  \"description\": \"Prueba\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -461,14 +407,14 @@
           }
         },
         {
-          "name": "Nombre vacío",
+          "name": "Catalog - POST categories como Vendedor (403)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
                 ]
               }
             }
@@ -479,22 +425,17 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos"
-              ]
-            },
+            "url": "{{catalogUrl}}/api/categories",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"\",\n  \"descripcion\": \"Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD\",\n  \"precio\": 7500000,\n  \"moneda\": \"COP\",\n  \"stock\": 10,\n  \"categoriaId\": \"{{categoriaId}}\"\n}",
+              "raw": "{\n  \"name\": \"No Autorizada\",\n  \"description\": \"Prueba\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -504,14 +445,14 @@
           }
         },
         {
-          "name": "Stock inicial negativo",
+          "name": "Catalog - POST products como Cliente (403)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
                 ]
               }
             }
@@ -522,22 +463,17 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos"
-              ]
-            },
+            "url": "{{catalogUrl}}/api/products",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Mouse Logitech MX\",\n  \"descripcion\": \"Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD\",\n  \"precio\": 7500000,\n  \"moneda\": \"COP\",\n  \"stock\": -1,\n  \"categoriaId\": \"{{categoriaId}}\"\n}",
+              "raw": "{\n  \"name\": \"Producto No Autorizado\",\n  \"description\": \"Prueba\",\n  \"price\": 100000,\n  \"currency\": \"COP\",\n  \"stock\": 5,\n  \"categoryId\": \"00000000-0000-0000-0000-000000000001\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -547,14 +483,14 @@
           }
         },
         {
-          "name": "Categoría inexistente",
+          "name": "Pedidos - POST orders como Vendedor (403)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
                 ]
               }
             }
@@ -565,22 +501,17 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos"
-              ]
-            },
+            "url": "{{ordersUrl}}/api/orders",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Mouse Logitech MX\",\n  \"descripcion\": \"Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD\",\n  \"precio\": 7500000,\n  \"moneda\": \"COP\",\n  \"stock\": 10,\n  \"categoriaId\": \"00000000-0000-0000-0000-000000000001\"\n}",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"00000000-0000-0000-0000-000000000001\",\n      \"quantity\": 1\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -590,14 +521,14 @@
           }
         },
         {
-          "name": "Producto duplicado",
+          "name": "Pedidos - POST orders como Admin (403)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
                 ]
               }
             }
@@ -608,22 +539,61 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos"
-              ]
-            },
+            "url": "{{ordersUrl}}/api/orders",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Lenovo ThinkPad X1 Carbon\",\n  \"descripcion\": \"Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD\",\n  \"precio\": 7500000,\n  \"moneda\": \"COP\",\n  \"stock\": 10,\n  \"categoriaId\": \"{{categoriaId}}\"\n}",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"00000000-0000-0000-0000-000000000001\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Flujo exitoso Catálogo (Admin, Vendedor y Cliente)",
+      "item": [
+        {
+          "name": "Crear categoría (Admin -> 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"categoryId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/categories",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Portátiles\",\n  \"description\": \"Equipos portátiles\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -633,7 +603,460 @@
           }
         },
         {
-          "name": "Categoría duplicada",
+          "name": "Listar categorías (Cliente -> 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/categories",
+            "description": ""
+          }
+        },
+        {
+          "name": "Obtener categoría por id (Cliente -> 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/categories/{{categoryId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Crear producto (Vendedor -> 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"productId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lenovo ThinkPad X1 Carbon\",\n  \"description\": \"Portátil 14 pulgadas, 16 GB RAM, 512 GB SSD\",\n  \"price\": 7500000,\n  \"currency\": \"COP\",\n  \"stock\": 10,\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Obtener producto por id (Cliente -> 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products/{{productId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Listar productos por categoría (Cliente -> 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products?categoryId={{categoryId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Actualizar precio (Vendedor -> 204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products/{{productId}}/price",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 7200000,\n  \"currency\": \"COP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ingresar stock +5 (Vendedor -> 204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products/{{productId}}/stock",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Descontar stock -3 (Vendedor -> 204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products/{{productId}}/stock",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": -3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Flujo exitoso Pedidos (integración Pedidos -> Catalog)",
+      "item": [
+        {
+          "name": "Crear pedido (Cliente -> 201, consulta Catalog con JWT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"orderId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{ordersUrl}}/api/orders",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar mis pedidos (Cliente -> 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{ordersUrl}}/api/orders",
+            "description": ""
+          }
+        },
+        {
+          "name": "Obtener pedido por id (Cliente -> 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{ordersUrl}}/api/orders/{{orderId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Cambiar estado de pedido como Cliente (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{ordersUrl}}/api/orders/{{orderId}}/status",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Confirmed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cambiar estado a Confirmed (Vendedor -> 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{ordersUrl}}/api/orders/{{orderId}}/status",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Confirmed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar todos los pedidos (Vendedor -> 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{ordersUrl}}/api/orders",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Errores de validación de dominio",
+      "item": [
+        {
+          "name": "Precio negativo (400)",
           "event": [
             {
               "listen": "test",
@@ -651,22 +1074,17 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/categorias",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "categorias"
-              ]
-            },
-            "description": "La comparación de nombres no distingue mayúsculas.",
+            "url": "{{catalogUrl}}/api/products",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"portátiles\"\n}",
+              "raw": "{\n  \"name\": \"Mouse Logitech MX\",\n  \"description\": \"Mouse inalámbrico\",\n  \"price\": -50000,\n  \"currency\": \"COP\",\n  \"stock\": 10,\n  \"categoryId\": \"{{categoryId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -676,7 +1094,235 @@
           }
         },
         {
-          "name": "Stock insuficiente",
+          "name": "Moneda inválida (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mouse Logitech MX\",\n  \"description\": \"Mouse inalámbrico\",\n  \"price\": 7500000,\n  \"currency\": \"PESOS\",\n  \"stock\": 10,\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Nombre vacío (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"description\": \"Mouse inalámbrico\",\n  \"price\": 7500000,\n  \"currency\": \"COP\",\n  \"stock\": 10,\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Stock inicial negativo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mouse Logitech MX\",\n  \"description\": \"Mouse inalámbrico\",\n  \"price\": 7500000,\n  \"currency\": \"COP\",\n  \"stock\": -1,\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Categoría inexistente (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mouse Logitech MX\",\n  \"description\": \"Mouse inalámbrico\",\n  \"price\": 7500000,\n  \"currency\": \"COP\",\n  \"stock\": 10,\n  \"categoryId\": \"00000000-0000-0000-0000-000000000001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Producto duplicado (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lenovo ThinkPad X1 Carbon\",\n  \"description\": \"Portátil 14 pulgadas\",\n  \"price\": 7500000,\n  \"currency\": \"COP\",\n  \"stock\": 10,\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Categoría duplicada (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/categories",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"portátiles\",\n  \"description\": \"Duplicada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Stock insuficiente (400)",
           "event": [
             {
               "listen": "test",
@@ -694,24 +1340,17 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}/stock",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}",
-                "stock"
-              ]
-            },
+            "url": "{{catalogUrl}}/api/products/{{productId}}/stock",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cantidad\": -100\n}",
+              "raw": "{\n  \"quantity\": -100\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -721,7 +1360,7 @@
           }
         },
         {
-          "name": "Ajuste de stock en cero",
+          "name": "Ajuste de stock en cero (400)",
           "event": [
             {
               "listen": "test",
@@ -739,24 +1378,17 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}/stock",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}",
-                "stock"
-              ]
-            },
+            "url": "{{catalogUrl}}/api/products/{{productId}}/stock",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cantidad\": 0\n}",
+              "raw": "{\n  \"quantity\": 0\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -780,23 +1412,43 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/00000000-0000-0000-0000-000000000001",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "00000000-0000-0000-0000-000000000001"
-              ]
-            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clienteToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products/00000000-0000-0000-0000-000000000001",
             "description": ""
           }
         },
         {
-          "name": "Desactivar producto (preparación)",
+          "name": "Desactivar producto como Vendedor (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products/{{productId}}/deactivate",
+            "description": ""
+          }
+        },
+        {
+          "name": "Desactivar producto como Admin (204)",
           "event": [
             {
               "listen": "test",
@@ -810,24 +1462,18 @@
           ],
           "request": {
             "method": "PATCH",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}/desactivar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}",
-                "desactivar"
-              ]
-            },
-            "description": "Petición exitosa necesaria para probar las dos siguientes."
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products/{{productId}}/deactivate",
+            "description": ""
           }
         },
         {
-          "name": "Desactivar producto ya desactivado",
+          "name": "Desactivar producto ya desactivado (400)",
           "event": [
             {
               "listen": "test",
@@ -841,24 +1487,18 @@
           ],
           "request": {
             "method": "PATCH",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}/desactivar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}",
-                "desactivar"
-              ]
-            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{catalogUrl}}/api/products/{{productId}}/deactivate",
             "description": ""
           }
         },
         {
-          "name": "Cambiar precio a producto desactivado",
+          "name": "Cambiar precio a producto desactivado (400)",
           "event": [
             {
               "listen": "test",
@@ -876,24 +1516,17 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendedorToken}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/productos/{{productoId}}/precio",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "productos",
-                "{{productoId}}",
-                "precio"
-              ]
-            },
+            "url": "{{catalogUrl}}/api/products/{{productId}}/price",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"valor\": 100000,\n  \"moneda\": \"COP\"\n}",
+              "raw": "{\n  \"amount\": 100000,\n  \"currency\": \"COP\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
