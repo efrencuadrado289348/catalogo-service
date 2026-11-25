@@ -60,16 +60,25 @@ Cada API espera a que su base de datos esté saludable (`healthcheck`) y aplica 
 ### 3. Comandos útiles de Docker Compose
 
 ```bash
-# Ver el estado de los 6 contenedores
+# Ver el estado de los 7 contenedores
 docker compose ps
 
 # Ver logs en tiempo real de todos los servicios (o de uno en específico)
 docker compose logs -f
-docker compose logs -f identity-api catalog-api pedidos-api
+docker compose logs -f identity-api catalog-api pedidos-api web
+
+# Evidencia de comunicación síncrona Pedidos -> Catalog
+docker compose logs -f pedidos-api | grep -i "catalog-api"
 
 # Detener y eliminar contenedores y volúmenes (para reiniciar con bases limpias)
 docker compose down -v
 ```
+
+> **Nota para macOS:** Si el puerto `5000` está ocupado por *AirPlay Receiver* (`ControlCenter`), puedes levantar el entorno indicando otro puerto para el frontend web sin modificar `docker-compose.yml`:
+> ```bash
+> WEB_PORT=5083 docker compose up -d --build
+> ```
+> Y acceder en **http://localhost:5083**.
 
 ---
 
@@ -123,7 +132,30 @@ docker compose exec identity-db psql -U identity -d identity -c \
 | `POST` | `/api/orders` | `Cliente` | Crea un pedido (reenvía el JWT a `Catalog` para validar precio y producto) | `201 Created`, `400`, `401`, `403` |
 | `GET` | `/api/orders` | `Admin`, `Vendedor`, `Cliente` | Lista pedidos (`Cliente` ve solo los suyos; `Admin`/`Vendedor` ven todos) | `200 OK`, `401` |
 | `GET` | `/api/orders/{id}` | `Admin`, `Vendedor`, `Cliente` | Obtiene un pedido por ID (`403` si un `Cliente` consulta el de otro usuario) | `200 OK`, `401`, `403`, `404` |
-| `PATCH` | `/api/orders/{id}/status` | `Vendedor` | Cambia el estado del pedido (`Confirmed`, `Shipped`, `Delivered`, `Cancelled`) | `200 OK`, `400`, `401`, `403`, `404` |
+| `PATCH` | `/api/orders/{id}/status` | `Vendedor` | Cambia el estado del pedido (`Pending` → `Confirmed` → `Shipped` / `Cancelled`) | `200 OK`, `400`, `401`, `403`, `404` |
+
+---
+
+## Frontend Web (`http://localhost:5000`) — Flujo completo del MVP
+
+El proyecto incluye una aplicación web **ASP.NET Core MVC** (`src/Web`) con patrón **BFF (Backend for Frontend)**: autentica contra `Identity.API`, guarda el JWT en una cookie `HttpOnly` de sesión y reenvía el token automáticamente (`BearerTokenHandler`) a `Catalog.API` y `Pedidos.API`.
+
+### Vistas y permisos por rol
+
+| Rol | Usuario de prueba | Secciones disponibles en la Web |
+| :--- | :--- | :--- |
+| **Admin** | `admin@ecommerce.local` / `Admin123!` | **Inicio** (estado de microservicios), **Productos** (solo lectura), **Gestión del catálogo** (`/CatalogAdmin`: crear categorías, crear productos, actualizar precio/stock y desactivar productos). |
+| **Vendedor** | `vendedor@ecommerce.local` / `Vendedor123!` | **Inicio**, **Productos**, **Gestión del catálogo** (crear productos y actualizar precio/stock; sin permiso para crear categorías ni desactivar), **Gestión de pedidos** (`/SalesOrders`: listar todos los pedidos, filtrar por estado y ejecutar transiciones `Pending → Confirmed → Shipped / Cancelled`). |
+| **Cliente** | `cliente@ecommerce.local` / `Cliente123!` | **Inicio**, **Productos** (filtrar por categoría, ver detalle y agregar al carrito), **Mi carrito** (`/Cart`: actualizar cantidades, vaciar y confirmar compra), **Mis pedidos** (`/Orders`: ver historial y detalle de sus propios pedidos). |
+
+### Flujo de prueba de punta a punta en la Web
+
+1. **Admin (`admin@ecommerce.local`)**: Iniciar sesión → ir a **Gestión del catálogo** → crear una categoría (ej. *Portátiles*) y un producto → ajustar precio o stock → cerrar sesión.
+2. **Cliente (`cliente@ecommerce.local`)**: Iniciar sesión → ir a **Productos** → filtrar por categoría, abrir detalle y agregar unidades a **Mi carrito** → ir a **Mi carrito** y pulsar **Realizar pedido** (`POST /api/orders` en `Pedidos.API`, que consulta síncronamente `GET /api/products/{id}` en `Catalog.API` reenviando el JWT) → comprobar que el pedido aparece en **Mis pedidos** con estado **Pendiente**.
+3. **Vendedor (`vendedor@ecommerce.local`)**: Iniciar sesión → ir a **Gestión de pedidos** (`/SalesOrders`) → filtrar o localizar el pedido en estado **Pendiente** → pulsar **Confirmar** (`PATCH /api/orders/{id}/status` con `Confirmed`) → pulsar **Enviar** (`Shipped`) o **Cancelar** (`Cancelled`) desde la tabla o el detalle.
+4. **Cliente (`cliente@ecommerce.local`)**: Iniciar sesión nuevamente → abrir **Mis pedidos** y verificar el estado actualizado (**Enviado** o **Cancelado**).
+
+> Para la demostración grabada, consulta el guion completo paso a paso en [`docs/guion-video.md`](docs/guion-video.md).
 
 ---
 
@@ -320,7 +352,12 @@ El archivo [`docs/Catalogo.postman_collection.json`](docs/Catalogo.postman_colle
 ```mermaid
 flowchart TD
     subgraph Clients["Clientes y Consumidores"]
+        Browser["Navegador Web (Usuario)"]
         Swagger["Swagger UI / Postman / PowerShell"]
+    end
+
+    subgraph WebFrontend["Web MVC - BFF (Puerto 5000)"]
+        WebApp["ASP.NET Core MVC + Cookie Session + BearerTokenHandler"]
     end
 
     subgraph IdentityService["Identity.API (Puerto 5081)"]
@@ -355,6 +392,10 @@ flowchart TD
         OrdSvc --> FwdHandler
     end
 
+    Browser -->|"HTTP + Cookie"| WebApp
+    WebApp -->|"POST /api/auth/login"| AuthCtrl
+    WebApp -->|"Bearer JWT"| CatAuth
+    WebApp -->|"Bearer JWT"| OrdAuth
     Swagger -->|"1. Login (credenciales)"| AuthCtrl
     Swagger -->|"2. Bearer JWT"| CatAuth
     Swagger -->|"3. Bearer JWT"| OrdAuth
@@ -368,13 +409,14 @@ flowchart TD
 ```text
 ├── Catalog.slnx
 ├── Dockerfile                         # Imagen Docker de Catalog.API
-├── docker-compose.yml                 # Orquestación de los 6 contenedores
+├── docker-compose.yml                 # Orquestación de los 7 contenedores
 ├── .env.example                       # Plantilla de variables de entorno (JWT_KEY)
 ├── pruebas-seguridad.ps1              # Script automatizado de pruebas de seguridad e integración
 ├── .config/dotnet-tools.json          # Versión fija de dotnet-ef
 ├── docs/
 │   ├── Catalogo.postman_collection.json
 │   ├── contrato-identidad.md
+│   ├── guion-video.md                 # Guion de demostración del MVP y logs síncronos
 │   └── propuestas-microservicio-2.md
 ├── src/
 │   ├── Identity.API/                  # ASP.NET Core Identity, EF Core, Seeders y emisión de JWT
@@ -385,7 +427,8 @@ flowchart TD
 │   ├── Pedidos.Domain/                # Entidades (Order, OrderItem) y estados del pedido
 │   ├── Pedidos.Application/           # Lógica de aplicación de pedidos (OrderService) y DTOs
 │   ├── Pedidos.Infrastructure/        # EF Core, cliente HTTP hacia Catalog y ForwardAuthorizationHandler
-│   └── Pedidos.API/                   # Controladores REST, validación JWT/Roles y Swagger con Bearer
+│   ├── Pedidos.API/                   # Controladores REST, validación JWT/Roles y Swagger con Bearer
+│   └── Web/                           # Frontend ASP.NET Core MVC (Catálogo, Carrito, Pedidos Cliente/Vendedor)
 └── tests/
     └── Catalog.UnitTests/             # Pruebas unitarias de dominio y aplicación
 ```

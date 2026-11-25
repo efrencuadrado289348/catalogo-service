@@ -6,7 +6,7 @@
 <h1 class="h3 mb-3">Pedido <span class="small text-muted">@Model.Id</span></h1>
 <p>
     <strong>Fecha (UTC):</strong> @Model.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")<br />
-    <strong>Estado:</strong> <span class="badge text-bg-secondary">@Model.StatusName</span>
+    <strong>Estado:</strong> <span class="badge @Model.StatusBadgeClass">@Model.StatusName</span>
 </p>
 
 <table class="table align-middle">
