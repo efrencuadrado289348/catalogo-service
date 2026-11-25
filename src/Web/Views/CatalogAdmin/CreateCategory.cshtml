@@ -1,0 +1,14 @@
+@model Web.Models.CreateCategoryViewModel
+@{ ViewData["Title"] = "Nueva categoría"; }
+
+<h1 class="h3">Nueva categoría</h1>
+
+<form asp-action="CreateCategory" method="post" class="col-md-6">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="mb-3"><label asp-for="Name" class="form-label">Nombre</label>
+        <input asp-for="Name" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="Description" class="form-label">Descripción</label>
+        <input asp-for="Description" class="form-control" /></div>
+    <button class="btn btn-primary">Crear</button>
+    <a class="btn btn-link" asp-action="Index">Cancelar</a>
+</form>

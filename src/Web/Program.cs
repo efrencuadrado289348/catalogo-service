@@ -28,6 +28,7 @@ builder.Services.AddHttpClient<IdentityClient>(ApiClients.Identity);
 // Typed clients of each feature go here, for example:
 builder.Services.AddHttpClient<CatalogClient>(ApiClients.Catalog);
 // builder.Services.AddHttpClient<OrdersClient>(ApiClients.Orders);
+builder.Services.AddHttpClient<CatalogAdminClient>(ApiClients.Catalog);
 
 builder.Services.AddControllersWithViews(options =>
 {
