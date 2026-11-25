@@ -37,16 +37,17 @@ O crear manualmente el archivo `.env` en la raíz con el siguiente contenido:
 JWT_KEY=i9Tkp83ubKEMy6feh/vgLUxAC+ICbcwTPN5PHzUIGKvqrpCnEfKUhJRxWED3/6N5
 ```
 
-### 2. Levantar los 6 contenedores con Docker Compose
+### 2. Levantar los 7 contenedores con Docker Compose
 
 ```bash
 docker compose up -d --build
 ```
 
-El entorno levanta 3 microservicios y 3 bases de datos PostgreSQL independientes definidas en [`docker-compose.yml`](docker-compose.yml):
+El entorno levanta el frontend web, 3 microservicios y 3 bases de datos PostgreSQL independientes definidas en [`docker-compose.yml`](docker-compose.yml):
 
 | Servicio | Descripción | Puerto Host | Swagger UI |
 | :--- | :--- | :--- | :--- |
+| `web` | **Frontend web** (ASP.NET Core MVC). Llama a los 3 microservicios desde el servidor con el JWT del usuario | `5000` | **http://localhost:5000** (interfaz) |
 | `identity-api` | Microservicio de autenticación, usuarios, roles y emisión de JWT | `5081` | http://localhost:5081/swagger |
 | `identity-db` | PostgreSQL 17 de Identity (`identity`) | `5434` | — |
 | `catalog-api` | Microservicio de catálogo de productos y categorías (CQRS/DDD) | `5080` | http://localhost:5080/swagger |

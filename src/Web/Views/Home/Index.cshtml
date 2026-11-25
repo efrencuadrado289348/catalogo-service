@@ -1,0 +1,45 @@
+@model IEnumerable<ServiceStatus>
+@{
+    ViewData["Title"] = "Inicio";
+    var roles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToList();
+}
+
+<h1 class="h3">Hola, @User.Identity?.Name</h1>
+<p class="text-muted">
+    Rol: <strong>@string.Join(", ", roles)</strong> ·
+    Correo: @(User.FindFirst(ClaimTypes.Email)?.Value)
+</p>
+
+<div class="card mt-4">
+    <div class="card-header">Estado de los microservicios</div>
+    <div class="card-body p-0">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Servicio</th>
+                    <th>Endpoint consultado</th>
+                    <th>HTTP</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var status in Model)
+                {
+                    <tr>
+                        <td>@status.Service</td>
+                        <td><code>GET /@status.Endpoint</code></td>
+                        <td>
+                            <span class="badge @(status.Ok ? "text-bg-success" : "text-bg-danger")">
+                                @(status.StatusCode?.ToString() ?? "—")
+                            </span>
+                        </td>
+                        <td>@status.Detail</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer text-muted small">
+        El frontend llama a cada microservicio desde el servidor, enviando el JWT emitido por Identity.
+    </div>
+</div>

@@ -107,6 +107,27 @@ services:
       catalog-api:
         condition: service_started
 
+  web:
+    build:
+      context: .
+      dockerfile: src/Web/Dockerfile
+    container_name: web
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Internal Docker network: the frontend calls the microservices server-side
+      Services__IdentityBaseUrl: http://identity-api:8080/
+      Services__CatalogBaseUrl: http://catalog-api:8080/
+      Services__OrdersBaseUrl: http://pedidos-api:8080/
+    ports:
+      - "5000:8080"
+    depends_on:
+      identity-api:
+        condition: service_started
+      catalog-api:
+        condition: service_started
+      pedidos-api:
+        condition: service_started
+
 volumes:
   catalog-data:
   identity-data:
