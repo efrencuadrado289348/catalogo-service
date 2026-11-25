@@ -33,9 +33,12 @@
 
         @if (canAddToCart && Model.Active && Model.Stock > 0)
         {
-            <button type="button" class="btn btn-primary" disabled>
-                Agregar al carrito
-            </button>
+            <form asp-controller="Cart" asp-action="Add" method="post" class="d-flex gap-2">
+                                <input type="hidden" name="productId" value="@Model.Id" />
+                                <input type="number" name="quantity" value="1" min="1" max="@Model.Stock" class="form-control" style="width:90px" />
+                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                <button type="submit" class="btn btn-primary ">Agregar al carrito</button>
+                            </form>
         }
     </div>
 </div>
