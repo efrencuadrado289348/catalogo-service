@@ -75,11 +75,12 @@ else
 
                         @if (canAddToCart && product.Active && product.Stock > 0)
                         {
-                            <button type="button"
-                                    class="btn btn-primary btn-sm"
-                                    disabled>
-                                Agregar al carrito
-                            </button>
+                            <form asp-controller="Cart" asp-action="Add" method="post" class="d-inline">
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <input type="hidden" name="quantity" value="1" />
+                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                <button type="submit" class="btn btn-primary btn-sm">Agregar al carrito</button>
+                            </form>
                         }
                     </div>
                 </div>
