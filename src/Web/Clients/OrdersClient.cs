@@ -18,10 +18,20 @@ public sealed record OrderRow(Guid Id, Guid CustomerId, DateTime CreatedAtUtc, i
         4 => "Cancelado",
         _ => "Desconocido"
     };
+
+    public string StatusBadgeClass => Status switch
+    {
+        1 => "text-bg-warning",
+        2 => "text-bg-primary",
+        3 => "text-bg-success",
+        4 => "text-bg-danger",
+        _ => "text-bg-secondary"
+    };
 }
 
 public sealed record CreateOrderItem(Guid ProductId, int Quantity);
 public sealed record CreateOrder(List<CreateOrderItem> Items);
+public sealed record ChangeOrderStatusRequest(string Status);
 
 public sealed class OrdersClient(HttpClient http)
 {
@@ -39,6 +49,9 @@ public sealed class OrdersClient(HttpClient http)
         return await response.Content.ReadFromJsonAsync<List<OrderRow>>(ct) ?? [];
     }
 
+    public Task<IReadOnlyList<OrderRow>> GetAllOrdersAsync(CancellationToken ct) =>
+        GetMyOrdersAsync(ct);
+
     public async Task<OrderRow?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         using var response = await http.GetAsync($"api/orders/{id}", ct);
@@ -48,9 +61,22 @@ public sealed class OrdersClient(HttpClient http)
         return await response.Content.ReadFromJsonAsync<OrderRow>(ct);
     }
 
+    public async Task<OrderRow> ChangeStatusAsync(Guid id, string status, CancellationToken ct)
+    {
+        using var response = await http.PatchAsJsonAsync(
+            $"api/orders/{id}/status",
+            new ChangeOrderStatusRequest(status),
+            ct);
+        await EnsureSuccessAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<OrderRow>(ct))!;
+    }
+
     // 400: Pedidos responde { "message": "..." } (o ProblemDetails). 401/403 los maneja la base.
     private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken ct)
     {
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            throw new InvalidOperationException("El pedido solicitado no existe.");
+
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
             string? message = null;

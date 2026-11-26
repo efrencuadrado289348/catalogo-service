@@ -119,7 +119,7 @@ services:
       Services__CatalogBaseUrl: http://catalog-api:8080/
       Services__OrdersBaseUrl: http://pedidos-api:8080/
     ports:
-      - "5000:8080"
+      - "${WEB_PORT:-5000}:8080"
     depends_on:
       identity-api:
         condition: service_started
