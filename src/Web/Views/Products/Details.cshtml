@@ -1,0 +1,44 @@
+@model Web.Clients.ProductItem
+
+@{
+    ViewData["Title"] = "Detalle del producto";
+    bool canAddToCart = ViewBag.CanAddToCart == true;
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        ← Volver al catálogo
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-4">
+        <h1 class="h3 mb-3">@Model.Name</h1>
+
+        <p class="text-muted">
+            @(string.IsNullOrWhiteSpace(Model.Description)
+                ? "Sin descripción disponible."
+                : Model.Description)
+        </p>
+
+        <h2 class="text-primary mb-3">
+            @Model.Price.ToString("N0") @Model.Currency
+        </h2>
+
+        <p><strong>Existencias:</strong> @Model.Stock</p>
+        <p>
+            <strong>Estado:</strong>
+            @(Model.Active ? "Disponible" : "Inactivo")
+        </p>
+
+        @if (canAddToCart && Model.Active && Model.Stock > 0)
+        {
+            <form asp-controller="Cart" asp-action="Add" method="post" class="d-flex gap-2">
+                                <input type="hidden" name="productId" value="@Model.Id" />
+                                <input type="number" name="quantity" value="1" min="1" max="@Model.Stock" class="form-control" style="width:90px" />
+                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                <button type="submit" class="btn btn-primary ">Agregar al carrito</button>
+                            </form>
+        }
+    </div>
+</div>

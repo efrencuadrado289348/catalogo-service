@@ -1,0 +1,90 @@
+
+@model IReadOnlyList<Web.Clients.ProductItem>
+
+@{
+    ViewData["Title"] = "Catálogo de productos";
+    var categories = ViewBag.Categories as IReadOnlyList<Web.Clients.CategoryItem>
+                     ?? Array.Empty<Web.Clients.CategoryItem>();
+    Guid? selectedCategoryId = ViewBag.SelectedCategoryId;
+    bool canAddToCart = ViewBag.CanAddToCart == true;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">Nuestro catálogo</h1>
+        <p class="text-muted mb-0">Explora nuestros productos electrónicos.</p>
+    </div>
+</div>
+
+<form method="get" asp-action="Index" class="row g-2 mb-4">
+    <div class="col-md-5">
+        <select name="categoryId" class="form-select">
+            <option value="">Todas las categorías</option>
+            @foreach (var category in categories)
+            {
+                <option value="@category.Id"
+                        selected="@(selectedCategoryId == category.Id)">
+                    @category.Name
+                </option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-dark">Filtrar</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+    </div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">
+        No hay productos disponibles en esta categoría.
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var product in Model)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">@product.Name</h5>
+
+                        <p class="card-text text-muted">
+                            @(string.IsNullOrWhiteSpace(product.Description)
+                                ? "Sin descripción disponible."
+                                : product.Description)
+                        </p>
+
+                        <p class="fw-bold fs-5">
+                            @product.Price.ToString("N0") @product.Currency
+                        </p>
+
+                        <p class="small text-muted">
+                            Existencias: @product.Stock
+                        </p>
+                    </div>
+
+                    <div class="card-footer bg-white d-flex gap-2">
+                        <a asp-action="Details"
+                           asp-route-id="@product.Id"
+                           class="btn btn-outline-dark btn-sm">
+                            Ver detalles
+                        </a>
+
+                        @if (canAddToCart && product.Active && product.Stock > 0)
+                        {
+                            <form asp-controller="Cart" asp-action="Add" method="post" class="d-inline">
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <input type="hidden" name="quantity" value="1" />
+                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                <button type="submit" class="btn btn-primary btn-sm">Agregar al carrito</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

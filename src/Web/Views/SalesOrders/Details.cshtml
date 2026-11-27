@@ -1,0 +1,81 @@
+@model Web.Clients.OrderRow
+@{
+    ViewData["Title"] = "Detalle del pedido";
+    var returnUrl = Url.Action("Details", "SalesOrders", new { id = Model.Id });
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← Volver a gestión de pedidos</a>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h1 class="h3 mb-2">Pedido <span class="small text-muted"><code>@Model.Id</code></span></h1>
+        <p class="mb-0">
+            <strong>Cliente:</strong> <code>@Model.CustomerId</code><br />
+            <strong>Fecha (UTC):</strong> @Model.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")<br />
+            <strong>Estado:</strong> <span class="badge @Model.StatusBadgeClass">@Model.StatusName</span>
+        </p>
+    </div>
+
+    <div class="d-flex gap-2">
+        @if (Model.Status == 1)
+        {
+            <form asp-action="ChangeStatus" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="status" value="Confirmed" />
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit" class="btn btn-success">Confirmar pedido</button>
+            </form>
+            <form asp-action="ChangeStatus" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="status" value="Cancelled" />
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit" class="btn btn-outline-danger">Cancelar pedido</button>
+            </form>
+        }
+        else if (Model.Status == 2)
+        {
+            <form asp-action="ChangeStatus" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="status" value="Shipped" />
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit" class="btn btn-primary">Marcar como enviado</button>
+            </form>
+            <form asp-action="ChangeStatus" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="status" value="Cancelled" />
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit" class="btn btn-outline-danger">Cancelar pedido</button>
+            </form>
+        }
+    </div>
+</div>
+
+<table class="table align-middle">
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th class="text-end">Cantidad</th>
+            <th class="text-end">Precio unitario</th>
+            <th class="text-end">Subtotal</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var i in Model.Items)
+    {
+        <tr>
+            <td>@i.ProductName</td>
+            <td class="text-end">@i.Quantity</td>
+            <td class="text-end">@i.UnitPrice.ToString("N0")</td>
+            <td class="text-end">@i.Subtotal.ToString("N0")</td>
+        </tr>
+    }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="3" class="text-end">Total</th>
+            <th class="text-end">@Model.Total.ToString("N0")</th>
+        </tr>
+    </tfoot>
+</table>

@@ -1,0 +1,48 @@
+@model Web.Models.CatalogAdminIndexViewModel
+@{ ViewData["Title"] = "Gestión del catálogo"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Gestión del catálogo</h1>
+    <div>
+        <a class="btn btn-primary" asp-action="CreateProduct">Nuevo producto</a>
+        @if (User.IsInRole(Web.Security.Roles.Admin))
+        {
+            <a class="btn btn-outline-primary" asp-action="CreateCategory">Nueva categoría</a>
+        }
+    </div>
+</div>
+
+<table class="table align-middle">
+    <thead>
+        <tr><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var p in Model.Products)
+    {
+        <tr>
+            <td>@p.Name</td>
+            <td>@(Model.CategoryNames.TryGetValue(p.CategoryId, out var cat) ? cat : "-")</td>
+            <td>@p.Price.ToString("N0") @p.Currency</td>
+            <td>@p.Stock</td>
+            <td>@(p.Active ? "Activo" : "Inactivo")</td>
+            <td>
+                <form asp-action="UpdatePrice" asp-route-id="@p.Id" method="post" class="d-inline-flex gap-1 mb-1">
+                    <input type="hidden" name="currency" value="@p.Currency" />
+                    <input name="amount" type="number" step="0.01" class="form-control form-control-sm" placeholder="Nuevo precio" required />
+                    <button class="btn btn-sm btn-outline-secondary">Precio</button>
+                </form>
+                <form asp-action="UpdateStock" asp-route-id="@p.Id" method="post" class="d-inline-flex gap-1 mb-1">
+                    <input name="quantity" type="number" class="form-control form-control-sm" placeholder="Ajuste (+/-)" required />
+<button class="btn btn-sm btn-outline-secondary">Ajustar stock</button>
+                </form>
+                @if (User.IsInRole(Web.Security.Roles.Admin) && p.Active)
+                {
+                    <form asp-action="Deactivate" asp-route-id="@p.Id" method="post" class="d-inline">
+                        <button class="btn btn-sm btn-outline-danger">Desactivar</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

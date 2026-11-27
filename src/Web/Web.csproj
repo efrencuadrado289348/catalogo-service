@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- TargetFramework, Nullable and ImplicitUsings come from Directory.Build.props -->
+  <!-- No NuGet packages: everything used here is part of ASP.NET Core -->
+
+</Project>
